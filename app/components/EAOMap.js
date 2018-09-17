@@ -3,10 +3,35 @@ import { render } from 'react-dom';
 import { Map, Marker, Popup, TileLayer, GeoJSON } from 'react-leaflet';
 import L from 'leaflet';
 
+L.Icon.Default.imagePath =
+  '//cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.4/images/';
+
 export default class EAOMap extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      projects: [],
+      latlng: {
+        lat: 55.4085,
+        lng: -125.0257
+      },
+      zoom: 6
+    }
+    this.loadData();
+  }
+
+  loadData() {
+    const self = this;
+    fetch("https://cors-anywhere.herokuapp.com/https://projects.eao.gov.bc.ca/api/projects/published")
+      .then(function(response) { return response.json(); })
+      .then(function(j) { 
+        self.setState({ projects: j });
+      });
+  }
+
   render() {
-    const position = [55.4085433,-125.025737];
-    const zoom = 6;
+    const position = this.state.latlng;
+    const zoom = this.state.zoom;
     const access_token = 'pk.eyJ1IjoibmdvdHRsaWViIiwiYSI6ImNqOW9uNGRzYTVmNjgzM21xemt0ZHVxZHoifQ.A6Mc9XJp5q23xmPpqbTAcQ'
     const map = (
       <Map center={position} zoom={zoom}>
@@ -17,8 +42,21 @@ export default class EAOMap extends React.Component {
           attribution="data <a href='https://projects.eao.gov.bc.ca/'>courtesy of the BC government</a>"
           minZoom={5}
         />
+        <ProjectMarkers projects={this.state.projects} />
       </Map>
     );
     return map;
   }
+}
+
+const ProjectMarkers = ({ projects }) => {
+  const items = projects.map((props) => (
+    <ProjectMarker props={props} key={props.id} />
+  ));
+
+  return <div style={{ display: 'none' }}>{items}</div>
+}
+
+const ProjectMarker = ({ props }) => {
+  return <Marker key={props.id} position={[props.lat,props.lon]} />
 }
