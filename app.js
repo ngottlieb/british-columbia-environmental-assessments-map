@@ -226,6 +226,10 @@ var _leaflet = require('leaflet');
 
 var _leaflet2 = _interopRequireDefault(_leaflet);
 
+var _FilterBox = require('./FilterBox');
+
+var _FilterBox2 = _interopRequireDefault(_FilterBox);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -246,24 +250,45 @@ var EAOMap = function (_React$Component) {
 
     _this.state = {
       projects: [],
+      currProjects: [],
       latlng: {
         lat: 55.4085,
         lng: -125.0257
       },
       zoom: 6
     };
-    _this.loadData();
+    _this.applyFilter = _this.applyFilter.bind(_this);
+    _this.fetchData();
     return _this;
   }
 
   _createClass(EAOMap, [{
-    key: 'loadData',
-    value: function loadData() {
+    key: 'fetchData',
+    value: function fetchData() {
       var self = this;
       fetch("https://cors-anywhere.herokuapp.com/https://projects.eao.gov.bc.ca/api/projects/published").then(function (response) {
         return response.json();
       }).then(function (j) {
-        self.setState({ projects: j });
+        self.setState({ projects: j, currProjects: self.filteredProjects(j, {}) });
+      });
+    }
+  }, {
+    key: 'filteredProjects',
+    value: function filteredProjects(projects, filter) {
+      return projects.filter(function (proj) {
+        // check each condition and return false if it doesn't meet the test
+        if (filter.type && filter.type !== proj.type) {
+          return false;
+        }
+        return true;
+      });
+    }
+  }, {
+    key: 'applyFilter',
+    value: function applyFilter(filter) {
+      var newProjects = this.filteredProjects(this.state.projects, filter);
+      this.setState({
+        currProjects: newProjects
       });
     }
   }, {
@@ -282,7 +307,10 @@ var EAOMap = function (_React$Component) {
           attribution: 'data <a href=\'https://projects.eao.gov.bc.ca/\'>courtesy of the BC government</a>',
           minZoom: 5
         }),
-        _react2.default.createElement(ProjectMarkers, { projects: this.state.projects })
+        _react2.default.createElement(ProjectMarkers, { projects: this.state.currProjects }),
+        _react2.default.createElement(_FilterBox2.default, {
+          applyFilter: this.applyFilter
+        })
       );
       return map;
     }
@@ -309,7 +337,144 @@ var ProjectMarkers = function ProjectMarkers(_ref) {
 };
 });
 
-;require.register("components/ProjectMarker.js", function(exports, require, module) {
+;require.register("components/FilterBox.js", function(exports, require, module) {
+'use strict';
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+
+var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
+
+var _react = require('react');
+
+var _react2 = _interopRequireDefault(_react);
+
+var _reactLeaflet = require('react-leaflet');
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
+
+function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
+
+function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
+
+function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+
+var FilterBox = function (_React$Component) {
+  _inherits(FilterBox, _React$Component);
+
+  function FilterBox(props) {
+    _classCallCheck(this, FilterBox);
+
+    var _this = _possibleConstructorReturn(this, (FilterBox.__proto__ || Object.getPrototypeOf(FilterBox)).call(this, props));
+
+    _this.state = {
+      filter: {
+        start_date: '',
+        end_date: '',
+        type: '',
+        decision: '',
+        phase: ''
+      }
+    };
+    _this.handleInputChange = _this.handleInputChange.bind(_this);
+    return _this;
+  }
+
+  _createClass(FilterBox, [{
+    key: 'handleInputChange',
+    value: function handleInputChange(event) {
+      var target = event.target;
+      var value = target.type === 'checkbox' ? target.checked : target.value;
+      var name = target.name;
+
+      var newFilter = Object.assign({}, this.state.filter);
+      newFilter[name] = value;
+      this.props.applyFilter(newFilter);
+      this.setState({
+        filter: _defineProperty({}, name, value)
+      });
+    }
+  }, {
+    key: 'render',
+    value: function render() {
+      var selectOptions = [];
+      var _iteratorNormalCompletion = true;
+      var _didIteratorError = false;
+      var _iteratorError = undefined;
+
+      try {
+        for (var _iterator = typeSelectOptions[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+          var opt = _step.value;
+
+          selectOptions.push(_react2.default.createElement(
+            'option',
+            { value: opt },
+            opt
+          ));
+        }
+      } catch (err) {
+        _didIteratorError = true;
+        _iteratorError = err;
+      } finally {
+        try {
+          if (!_iteratorNormalCompletion && _iterator.return) {
+            _iterator.return();
+          }
+        } finally {
+          if (_didIteratorError) {
+            throw _iteratorError;
+          }
+        }
+      }
+
+      return _react2.default.createElement(
+        'div',
+        { className: 'leaflet-control-container' },
+        _react2.default.createElement(
+          'div',
+          { className: 'filter-box leaflet-top leaflet-control leaflet-right' },
+          _react2.default.createElement(
+            'h3',
+            null,
+            'Filter Results'
+          ),
+          _react2.default.createElement(
+            'form',
+            null,
+            _react2.default.createElement(
+              'label',
+              null,
+              'Project Type:',
+              _react2.default.createElement(
+                'select',
+                { name: 'type', value: this.state.filter.type, onChange: this.handleInputChange },
+                _react2.default.createElement(
+                  'option',
+                  { value: '' },
+                  'All'
+                ),
+                selectOptions
+              )
+            )
+          )
+        )
+      );
+    }
+  }]);
+
+  return FilterBox;
+}(_react2.default.Component);
+
+exports.default = FilterBox;
+
+
+var typeSelectOptions = ['Mines', 'Industrial', 'Energy-Electricity', 'Transportation', 'Energy-Petroleum & Natural Gas', 'Water Management', 'Waste Disposal', 'Tourist Desination Resorts'];
+});
+
+require.register("components/ProjectMarker.js", function(exports, require, module) {
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
