@@ -1,6 +1,7 @@
 import React from 'react';
 import { render } from 'react-dom';
 import { Map, Marker, Popup, TileLayer, GeoJSON } from 'react-leaflet';
+import ProjectMarker from './ProjectMarker';
 import L from 'leaflet';
 
 L.Icon.Default.imagePath =
@@ -51,12 +52,8 @@ export default class EAOMap extends React.Component {
 
 const ProjectMarkers = ({ projects }) => {
   const items = projects.map((props) => (
-    <ProjectMarker props={props} key={props.id} />
+    <ProjectMarker key={props.id} {...props} />
   ));
 
   return <div style={{ display: 'none' }}>{items}</div>
-}
-
-const ProjectMarker = ({ props }) => {
-  return <Marker key={props.id} position={[props.lat,props.lon]} />
 }
