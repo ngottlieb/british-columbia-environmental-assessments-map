@@ -230,6 +230,10 @@ var _FilterBox = require('./FilterBox');
 
 var _FilterBox2 = _interopRequireDefault(_FilterBox);
 
+var _moment = require('moment');
+
+var _moment2 = _interopRequireDefault(_moment);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -280,6 +284,23 @@ var EAOMap = function (_React$Component) {
         if (filter.type && filter.type !== proj.type) {
           return false;
         }
+        if (filter.decision && filter.decision !== proj.eacDecision) {
+          return false;
+        }
+        if (filter.phase && filter.phase !== proj.currentPhase.name) {
+          return false;
+        }
+
+        if (filter.startDate) {
+          if ((0, _moment2.default)(filter.startDate) > (0, _moment2.default)(proj.decisionDate)) {
+            return false;
+          }
+        }
+        if (filter.endDate) {
+          if ((0, _moment2.default)(filter.endDate) < (0, _moment2.default)(proj.decisionDate)) {
+            return false;
+          }
+        }
         return true;
       });
     }
@@ -292,23 +313,56 @@ var EAOMap = function (_React$Component) {
       });
     }
   }, {
+    key: 'optionsForFilters',
+    value: function optionsForFilters() {
+      var options = {};
+      // type options
+      var types = this.state.projects.map(function (p) {
+        return p.type;
+      });
+      options.typeOptions = new Set(types);
+
+      var decisions = this.state.projects.map(function (p) {
+        return p.eacDecision;
+      });
+      options.decisionOptions = new Set(decisions.filter(function (p) {
+        if (p) {
+          return p.length > 0;
+        } else {
+          return false;
+        }
+      }));
+
+      var phases = this.state.projects.map(function (p) {
+        return p.currentPhase.name;
+      });
+      options.phaseOptions = new Set(phases);
+
+      return options;
+    }
+  }, {
     key: 'render',
     value: function render() {
       var position = this.state.latlng;
       var zoom = this.state.zoom;
       var access_token = 'pk.eyJ1IjoibmdvdHRsaWViIiwiYSI6ImNqOW9uNGRzYTVmNjgzM21xemt0ZHVxZHoifQ.A6Mc9XJp5q23xmPpqbTAcQ';
       var map = _react2.default.createElement(
-        _reactLeaflet.Map,
-        { center: position, zoom: zoom },
-        _react2.default.createElement(_reactLeaflet.TileLayer, {
-          url: 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}',
-          accessToken: access_token,
-          id: 'mapbox.outdoors',
-          attribution: 'data <a href=\'https://projects.eao.gov.bc.ca/\'>courtesy of the BC government</a>',
-          minZoom: 5
-        }),
-        _react2.default.createElement(ProjectMarkers, { projects: this.state.currProjects }),
+        'div',
+        null,
+        _react2.default.createElement(
+          _reactLeaflet.Map,
+          { center: position, zoom: zoom },
+          _react2.default.createElement(_reactLeaflet.TileLayer, {
+            url: 'https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}',
+            accessToken: access_token,
+            id: 'mapbox.outdoors',
+            attribution: 'data <a href=\'https://projects.eao.gov.bc.ca/\'>courtesy of the BC government</a>',
+            minZoom: 5
+          }),
+          _react2.default.createElement(ProjectMarkers, { projects: this.state.currProjects })
+        ),
         _react2.default.createElement(_FilterBox2.default, {
+          optionsForFilters: this.optionsForFilters(),
           applyFilter: this.applyFilter
         })
       );
@@ -352,6 +406,16 @@ var _react2 = _interopRequireDefault(_react);
 
 var _reactLeaflet = require('react-leaflet');
 
+var _DayPickerInput = require('react-day-picker/DayPickerInput');
+
+var _DayPickerInput2 = _interopRequireDefault(_DayPickerInput);
+
+var _moment = require('moment');
+
+var _moment2 = _interopRequireDefault(_moment);
+
+var _reactBootstrap = require('react-bootstrap');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
@@ -371,15 +435,10 @@ var FilterBox = function (_React$Component) {
     var _this = _possibleConstructorReturn(this, (FilterBox.__proto__ || Object.getPrototypeOf(FilterBox)).call(this, props));
 
     _this.state = {
-      filter: {
-        start_date: '',
-        end_date: '',
-        type: '',
-        decision: '',
-        phase: ''
-      }
+      filter: {}
     };
     _this.handleInputChange = _this.handleInputChange.bind(_this);
+    _this.handleDateChange = _this.handleDateChange.bind(_this);
     return _this;
   }
 
@@ -389,27 +448,100 @@ var FilterBox = function (_React$Component) {
       var target = event.target;
       var value = target.type === 'checkbox' ? target.checked : target.value;
       var name = target.name;
-
+      console.log(name + " " + value);
+      this.updateFilter(_defineProperty({}, name, value));
+    }
+  }, {
+    key: 'updateFilter',
+    value: function updateFilter(updates) {
       var newFilter = Object.assign({}, this.state.filter);
-      newFilter[name] = value;
-      this.props.applyFilter(newFilter);
+      Object.assign(newFilter, updates);
+      console.log(newFilter);
       this.setState({
-        filter: _defineProperty({}, name, value)
+        filter: updates
       });
+      this.props.applyFilter(newFilter);
+    }
+  }, {
+    key: 'handleDateChange',
+    value: function handleDateChange(day, modifiers, input) {
+      var target = input.getInput();
+      var name = target.name;
+      var value = target.value.trim();
+      this.updateFilter(_defineProperty({}, name, value));
     }
   }, {
     key: 'render',
     value: function render() {
-      var selectOptions = [];
+
+      return _react2.default.createElement(
+        _reactBootstrap.Well,
+        { className: 'filter-box leaflet-top leaflet-control leaflet-right' },
+        _react2.default.createElement(
+          'h3',
+          null,
+          'Filter Results'
+        ),
+        _react2.default.createElement(
+          _reactBootstrap.Form,
+          null,
+          _react2.default.createElement(FilterSelect, {
+            attribute: 'type',
+            value: this.state.filter.type,
+            onChange: this.handleInputChange,
+            label: 'Project Type',
+            options: this.optionsForFilter("type")
+          }),
+          _react2.default.createElement(FilterSelect, {
+            attribute: 'decision',
+            value: this.state.filter.decision,
+            onChange: this.handleInputChange,
+            label: 'Decision Status',
+            options: this.optionsForFilter("decision")
+          }),
+          _react2.default.createElement(FilterSelect, {
+            attribute: 'phase',
+            value: this.state.filter.phase,
+            onChange: this.handleInputChange,
+            label: 'Phase',
+            options: this.optionsForFilter("phase")
+          }),
+          _react2.default.createElement(
+            'label',
+            null,
+            'Start Date:'
+          ),
+          _react2.default.createElement(_DayPickerInput2.default, {
+            onDayChange: this.handleDateChange,
+            value: this.state.filter.startDate,
+            inputProps: { name: 'startDate' }
+          }),
+          _react2.default.createElement(
+            'label',
+            null,
+            'End Date:'
+          ),
+          _react2.default.createElement(_DayPickerInput2.default, {
+            onDayChange: this.handleDateChange,
+            value: this.state.filter.endDate,
+            inputProps: { name: 'endDate' }
+          })
+        )
+      );
+    }
+  }, {
+    key: 'optionsForFilter',
+    value: function optionsForFilter(attribute) {
+      var options = [];
       var _iteratorNormalCompletion = true;
       var _didIteratorError = false;
       var _iteratorError = undefined;
 
       try {
-        for (var _iterator = typeSelectOptions[Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
+        for (var _iterator = this.props.optionsForFilters[attribute + "Options"][Symbol.iterator](), _step; !(_iteratorNormalCompletion = (_step = _iterator.next()).done); _iteratorNormalCompletion = true) {
           var opt = _step.value;
 
-          selectOptions.push(_react2.default.createElement(
+          options.push(_react2.default.createElement(
             'option',
             { value: opt },
             opt
@@ -430,38 +562,7 @@ var FilterBox = function (_React$Component) {
         }
       }
 
-      return _react2.default.createElement(
-        'div',
-        { className: 'leaflet-control-container' },
-        _react2.default.createElement(
-          'div',
-          { className: 'filter-box leaflet-top leaflet-control leaflet-right' },
-          _react2.default.createElement(
-            'h3',
-            null,
-            'Filter Results'
-          ),
-          _react2.default.createElement(
-            'form',
-            null,
-            _react2.default.createElement(
-              'label',
-              null,
-              'Project Type:',
-              _react2.default.createElement(
-                'select',
-                { name: 'type', value: this.state.filter.type, onChange: this.handleInputChange },
-                _react2.default.createElement(
-                  'option',
-                  { value: '' },
-                  'All'
-                ),
-                selectOptions
-              )
-            )
-          )
-        )
-      );
+      return options;
     }
   }]);
 
@@ -471,10 +572,41 @@ var FilterBox = function (_React$Component) {
 exports.default = FilterBox;
 
 
-var typeSelectOptions = ['Mines', 'Industrial', 'Energy-Electricity', 'Transportation', 'Energy-Petroleum & Natural Gas', 'Water Management', 'Waste Disposal', 'Tourist Desination Resorts'];
+var FilterSelect = function FilterSelect(_ref) {
+  var attribute = _ref.attribute,
+      value = _ref.value,
+      onChange = _ref.onChange,
+      label = _ref.label,
+      options = _ref.options;
+
+  return _react2.default.createElement(
+    _reactBootstrap.FormGroup,
+    { controlId: attribute },
+    _react2.default.createElement(
+      _reactBootstrap.ControlLabel,
+      null,
+      label
+    ),
+    _react2.default.createElement(
+      _reactBootstrap.FormControl,
+      {
+        componentClass: 'select',
+        value: value,
+        onChange: onChange,
+        name: attribute
+      },
+      _react2.default.createElement(
+        'option',
+        { value: '' },
+        'All'
+      ),
+      options
+    )
+  );
+};
 });
 
-require.register("components/ProjectMarker.js", function(exports, require, module) {
+;require.register("components/ProjectMarker.js", function(exports, require, module) {
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -614,7 +746,7 @@ var _App2 = _interopRequireDefault(_App);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 document.addEventListener('DOMContentLoaded', function () {
-  _reactDom2.default.render(_react2.default.createElement(_App2.default, null), document.getElementById('mapContainer'));
+  _reactDom2.default.render(_react2.default.createElement(_App2.default, null), document.getElementById('container'));
 });
 });
 
