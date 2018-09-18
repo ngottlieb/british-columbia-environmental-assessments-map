@@ -4,6 +4,7 @@ import { Map, Marker, Popup, TileLayer, Pane } from 'react-leaflet';
 import ProjectMarker from './ProjectMarker';
 import L from 'leaflet';
 import FilterBox from './FilterBox';
+import moment from 'moment';
 
 L.Icon.Default.imagePath =
   '//cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.4/images/';
@@ -35,6 +36,19 @@ export default class EAOMap extends React.Component {
     return projects.filter(function(proj) {
       // check each condition and return false if it doesn't meet the test
       if (filter.type && filter.type !== proj.type) { return false; }
+      if (filter.decision && filter.decision !== proj.eacDecision) { return false; }
+      if (filter.phase && filter.phase !== proj.currentPhase.name) {return false; }
+
+      if (filter.startDate) {
+        if (moment(filter.startDate) > moment(proj.decisionDate)) {
+          return false;
+        }
+      }
+      if (filter.endDate) {
+        if (moment(filter.endDate) < moment(proj.decisionDate)) {
+          return false;
+        }
+      }
       return true;
     });
   }
@@ -44,6 +58,27 @@ export default class EAOMap extends React.Component {
     this.setState({
       currProjects: newProjects
     });
+  }
+
+  optionsForFilters() {
+    var options = {};
+    // type options
+    const types = this.state.projects.map(function(p) { return p.type; });
+    options.typeOptions = new Set(types)
+
+    var decisions = this.state.projects.map(function(p) { return p.eacDecision; });
+    options.decisionOptions = new Set(decisions.filter(
+      function(p) { 
+        if (p) {
+          return p.length > 0;
+        } else {
+          return false;
+        }}));
+    
+    var phases = this.state.projects.map(function(p) { return p.currentPhase.name; });
+    options.phaseOptions = new Set(phases);
+
+    return options;
   }
 
 
@@ -62,6 +97,7 @@ export default class EAOMap extends React.Component {
         />
         <ProjectMarkers projects={this.state.currProjects} />
         <FilterBox
+          optionsForFilters={this.optionsForFilters()}
           applyFilter={this.applyFilter}
         />
       </Map>

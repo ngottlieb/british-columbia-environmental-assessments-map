@@ -11,7 +11,8 @@ exports.files = {
 
 exports.npm = {
   styles: {
-    'leaflet': ['dist/leaflet.css']
+    'leaflet': ['dist/leaflet.css'],
+    'react-day-picker': ['lib/style.css']
   }
 };
 
