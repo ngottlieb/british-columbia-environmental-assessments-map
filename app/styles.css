@@ -17,8 +17,8 @@ html, body, #appContainer, #app {
 }
 
 .filter-box {
-  width: 25%;
-  height: 20%;
+  width: 20%;
+  height: 40%;
   text-align: right;
   margin-top: 10px;
   margin-right: 10px;

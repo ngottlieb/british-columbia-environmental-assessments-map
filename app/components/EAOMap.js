@@ -87,20 +87,22 @@ export default class EAOMap extends React.Component {
     const zoom = this.state.zoom;
     const access_token = 'pk.eyJ1IjoibmdvdHRsaWViIiwiYSI6ImNqOW9uNGRzYTVmNjgzM21xemt0ZHVxZHoifQ.A6Mc9XJp5q23xmPpqbTAcQ'
     const map = (
-      <Map center={position} zoom={zoom}>
-        <TileLayer
-          url='https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}'
-          accessToken={access_token}
-          id="mapbox.outdoors"
-          attribution="data <a href='https://projects.eao.gov.bc.ca/'>courtesy of the BC government</a>"
-          minZoom={5}
-        />
-        <ProjectMarkers projects={this.state.currProjects} />
+      <div>
+        <Map center={position} zoom={zoom}>
+          <TileLayer
+            url='https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}'
+            accessToken={access_token}
+            id="mapbox.outdoors"
+            attribution="data <a href='https://projects.eao.gov.bc.ca/'>courtesy of the BC government</a>"
+            minZoom={5}
+          />
+          <ProjectMarkers projects={this.state.currProjects} />
+        </Map>
         <FilterBox
           optionsForFilters={this.optionsForFilters()}
           applyFilter={this.applyFilter}
         />
-      </Map>
+      </div>
     );
     return map;
   }
