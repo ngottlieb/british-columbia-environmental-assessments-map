@@ -131,6 +131,14 @@ export default class FilterBox extends React.Component {
         { decisionDateInputs }
 
         </Form>
+        <hr />
+        <Button
+          bsStyle="info"
+          block
+          onClick={this.props.openModal}
+        >
+          HELP -- What is this map?
+        </Button>
       </Well>
     );
   }

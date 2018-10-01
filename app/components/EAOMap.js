@@ -134,6 +134,7 @@ export default class EAOMap extends React.Component {
           { isLoading ? (<Spinner />) : markers }
         </Map>
         <FilterBox
+          openModal={this.props.openModal}
           optionsForFilters={this.state.optionsForFilters}
           applyFilter={this.applyFilter}
           minYear={this.state.minYear}
