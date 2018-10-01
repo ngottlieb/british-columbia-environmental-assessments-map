@@ -165,6 +165,8 @@ var _EAOMap = require('./EAOMap');
 
 var _EAOMap2 = _interopRequireDefault(_EAOMap);
 
+var _reactBootstrap = require('react-bootstrap');
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -179,7 +181,14 @@ var App = function (_React$Component) {
   function App(props) {
     _classCallCheck(this, App);
 
-    return _possibleConstructorReturn(this, (App.__proto__ || Object.getPrototypeOf(App)).call(this, props));
+    var _this = _possibleConstructorReturn(this, (App.__proto__ || Object.getPrototypeOf(App)).call(this, props));
+
+    _this.state = {
+      showModal: false
+    };
+    _this.openModal = _this.openModal.bind(_this);
+    _this.closeModal = _this.closeModal.bind(_this);
+    return _this;
   }
 
   _createClass(App, [{
@@ -188,8 +197,118 @@ var App = function (_React$Component) {
       return _react2.default.createElement(
         'div',
         { id: 'app' },
-        _react2.default.createElement(_EAOMap2.default, null)
+        _react2.default.createElement(_EAOMap2.default, { openModal: this.openModal }),
+        _react2.default.createElement(
+          _reactBootstrap.Modal,
+          { show: this.state.showModal, onHide: this.closeModal },
+          _react2.default.createElement(
+            _reactBootstrap.Modal.Header,
+            { closeButton: true },
+            _react2.default.createElement(
+              _reactBootstrap.Modal.Title,
+              null,
+              'What is this?'
+            )
+          ),
+          _react2.default.createElement(
+            _reactBootstrap.Modal.Body,
+            null,
+            _react2.default.createElement(
+              'h4',
+              null,
+              'What is the map showing?'
+            ),
+            _react2.default.createElement(
+              'p',
+              null,
+              'In British Columbia, Canada, "major projects" have to go through an environmental assessment process governed by the ',
+              _react2.default.createElement(
+                'a',
+                { href: 'https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/environmental-assessments' },
+                'Environmental Assessment Office'
+              ),
+              '. This map shows all projects that either have been through or are going through the environmental assessment process since 1990.'
+            ),
+            _react2.default.createElement(
+              'h4',
+              null,
+              ' How do I use it?'
+            ),
+            _react2.default.createElement(
+              'p',
+              null,
+              'By default, and when you click "Reset Filter," all projects are displayed on the map. You can narrow the filters using the select boxes and date sliders on the right. You can find more information about what different "phases" and "decision statuses" actually mean ',
+              _react2.default.createElement(
+                'a',
+                { href: 'https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/environmental-assessments/the-environmental-assessment-process' },
+                'on the EAO website.'
+              )
+            ),
+            _react2.default.createElement(
+              'h4',
+              null,
+              'Some Notes'
+            ),
+            _react2.default.createElement(
+              'p',
+              null,
+              'These data are from a public source provided by the EAO here: ',
+              _react2.default.createElement(
+                'a',
+                { href: 'https://projects.eao.gov.bc.ca/' },
+                'https://projects.eao.gov.bc.ca/'
+              ),
+              '. If you go there, you\'ll see that they already have a visualization of projects on a map. I found their interface frustrating as it doesn\'t allow you to actually filter on the map itself, just in the table below, nor does it provide any visual indication of what a given project is until you click on it, so I built this enhanced interface instead.'
+            ),
+            _react2.default.createElement(
+              'p',
+              null,
+              'The points provided for each project with the data are not necessarily representative of the full scope of the project. For example, there are a handful of hydro projects including the "Narrows Inlet Hydro" west of the Tantalus Range that include multiple dams under one umbrella and are only shown as a single point on the map. We\'re hoping to find another data source at some point that will allow us to extend beyond the single point display per project, but for now, that\'s what the Epic API provides.'
+            ),
+            _react2.default.createElement(
+              'h4',
+              null,
+              'Suggestions?'
+            ),
+            _react2.default.createElement(
+              'p',
+              null,
+              'This was created by ',
+              _react2.default.createElement(
+                'a',
+                { href: 'http://www.nicholasgottlieb.com' },
+                'Nick Gottlieb'
+              ),
+              '. If you have suggestions or feedback, or want to contribute to this project or collaborate on something else, please reach out! This project is ',
+              _react2.default.createElement(
+                'a',
+                { href: 'https://github.com/ngottlieb/british-columbia-environmental-assessments-map' },
+                'hosted on Github'
+              ),
+              '.'
+            )
+          ),
+          _react2.default.createElement(
+            _reactBootstrap.Modal.Footer,
+            null,
+            _react2.default.createElement(
+              _reactBootstrap.Button,
+              { onClick: this.closeModal },
+              'Close'
+            )
+          )
+        )
       );
+    }
+  }, {
+    key: 'openModal',
+    value: function openModal() {
+      this.setState({ showModal: true });
+    }
+  }, {
+    key: 'closeModal',
+    value: function closeModal() {
+      this.setState({ showModal: false });
     }
   }]);
 
@@ -407,6 +526,7 @@ var EAOMap = function (_React$Component) {
           isLoading ? _react2.default.createElement(_reactSpinner2.default, null) : markers
         ),
         _react2.default.createElement(_FilterBox2.default, {
+          openModal: this.props.openModal,
           optionsForFilters: this.state.optionsForFilters,
           applyFilter: this.applyFilter,
           minYear: this.state.minYear,
@@ -479,14 +599,11 @@ var FilterBox = function (_React$Component) {
     var _this = _possibleConstructorReturn(this, (FilterBox.__proto__ || Object.getPrototypeOf(FilterBox)).call(this, props));
 
     _this.state = {
-      filter: {
-        minYear: _this.props.minYear,
-        maxYear: _this.props.maxYear,
-        includeNA: true
-      }
+      filter: _this.defaultFilter()
     };
     _this.handleInputChange = _this.handleInputChange.bind(_this);
     _this.handleDateSliderChange = _this.handleDateSliderChange.bind(_this);
+    _this.resetFilter = _this.resetFilter.bind(_this);
     return _this;
   }
 
@@ -497,6 +614,27 @@ var FilterBox = function (_React$Component) {
       var value = target.type === 'checkbox' ? target.checked : target.value;
       var name = target.name;
       this.updateFilter(_defineProperty({}, name, value));
+    }
+  }, {
+    key: 'defaultFilter',
+    value: function defaultFilter() {
+      return {
+        startDate: this.props.minYear,
+        endDate: this.props.maxYear,
+        includeNA: true,
+        type: '',
+        decision: '',
+        phase: ''
+      };
+    }
+  }, {
+    key: 'resetFilter',
+    value: function resetFilter() {
+      var filter = this.defaultFilter();
+      this.setState({
+        filter: filter
+      });
+      this.props.applyFilter(filter);
     }
   }, {
     key: 'updateFilter',
@@ -517,9 +655,18 @@ var FilterBox = function (_React$Component) {
       });
     }
   }, {
+    key: 'currentStartYear',
+    value: function currentStartYear() {
+      return this.state.filter.startDate || this.props.minYear;
+    }
+  }, {
+    key: 'currentEndYear',
+    value: function currentEndYear() {
+      return this.state.filter.endDate || this.props.maxYear;
+    }
+  }, {
     key: 'render',
     value: function render() {
-
       var decisionDateInputs;
       // only render the slider once we've established its bounds
       if (this.props.minYear && this.props.maxYear) {
@@ -547,17 +694,18 @@ var FilterBox = function (_React$Component) {
               max: this.props.maxYear,
               withBars: true,
               pearling: true,
-              onChange: this.handleDateSliderChange
+              onChange: this.handleDateSliderChange,
+              value: [this.currentStartYear(), this.currentEndYear()]
             },
             _react2.default.createElement(
               'div',
               null,
-              this.state.filter.startDate || this.props.minYear
+              this.currentStartYear()
             ),
             _react2.default.createElement(
               'div',
               null,
-              this.state.filter.endDate || this.props.maxYear
+              this.currentEndYear()
             )
           )
         );
@@ -566,6 +714,16 @@ var FilterBox = function (_React$Component) {
       return _react2.default.createElement(
         _reactBootstrap.Well,
         { className: 'filter-box leaflet-top leaflet-control leaflet-right' },
+        _react2.default.createElement(
+          _reactBootstrap.Button,
+          {
+            bsStyle: 'primary',
+            bsSize: 'large',
+            onClick: this.resetFilter,
+            style: { float: 'left' }
+          },
+          'Reset Filter'
+        ),
         _react2.default.createElement(
           'h3',
           null,
@@ -596,6 +754,16 @@ var FilterBox = function (_React$Component) {
             options: this.optionsForFilter("phase")
           }),
           decisionDateInputs
+        ),
+        _react2.default.createElement('hr', null),
+        _react2.default.createElement(
+          _reactBootstrap.Button,
+          {
+            bsStyle: 'info',
+            block: true,
+            onClick: this.props.openModal
+          },
+          'HELP -- What is this map?'
         )
       );
     }
