@@ -84,9 +84,11 @@ export default class FilterBox extends React.Component {
               max={this.props.maxYear}
               withBars
               pearling
-              value={[this.state.filter.startDate, this.state.filter.endDate]}
               onChange={this.handleDateSliderChange}
-            />
+            >
+              <div>{this.state.filter.startDate}</div>
+              <div>{this.state.filter.endDate}</div>
+            </ReactSlider>
           </FormGroup>
         </Form>
       </Well>

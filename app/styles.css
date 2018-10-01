@@ -46,6 +46,7 @@ html, body, #appContainer, #app {
   height: 30px;
   margin-top: 10px;
   border-radius: 5px;
+  line-height:30px;
 }
 .slider .bar {
   position: relative;
