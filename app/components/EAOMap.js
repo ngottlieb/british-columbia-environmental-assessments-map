@@ -20,7 +20,7 @@ export default class EAOMap extends React.Component {
         lat: 55.4085,
         lng: -125.0257
       },
-      minYear: 1990,
+      minYear: 1980,
       maxYear: moment().year(),
       optionsForFilters: {
         typeOptions: [],
@@ -37,7 +37,7 @@ export default class EAOMap extends React.Component {
     var self = this;
     fetch("https://cors-anywhere.herokuapp.com/https://projects.eao.gov.bc.ca/api/projects/published")
       .then(function(response) { return response.json(); })
-      .then(function(j) { self.setState({ projects: self.processProjects(j), currProjects: self.filteredProjects(j, {}) }) });
+      .then(function(j) { self.setState({ projects: self.processProjects(j), currProjects: self.filteredProjects(j, { includeNA: true }) }) });
   }
 
   // get decisionYear for all projects
@@ -58,17 +58,21 @@ export default class EAOMap extends React.Component {
   filteredProjects(projects, filter) {
     return projects.filter(function(proj) {
       // check each condition and return false if it doesn't meet the test
-      if (filter.type && filter.type !== proj.type) { return false; }
-      if (filter.decision && filter.decision !== proj.eacDecision) { return false; }
-      if (filter.phase && filter.phase !== proj.currentPhase.name) {return false; }
+      if (filter.type && proj.type && filter.type !== proj.type) { return false; }
+      if (filter.decision && proj.eacDecision && filter.decision !== proj.eacDecision) { return false; }
+      if (filter.phase && proj.currentPhase.name && filter.phase !== proj.currentPhase.name) { return false; }
 
-      if (filter.startDate) {
+      if (!filter.includeNA && !proj.decisionYear) {
+        return false;
+      }
+
+      if (filter.startDate && proj.decisionYear) {
         if (filter.startDate >= proj.decisionYear) {
           return false;
         }
       }
-      if (filter.endDate) {
-        if (filter.endDate <= proj.decisionYear) {
+      if (filter.endDate && proj.decisionYear) {
+        if (filter.endDate <= proj.decisionYear && proj.decisionYear) {
           return false;
         }
       }

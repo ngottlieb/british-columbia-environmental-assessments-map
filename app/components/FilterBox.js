@@ -1,6 +1,6 @@
 import React from 'react';
 import { MapControl } from 'react-leaflet';
-import { Well, Form, FormGroup, FormControl, ControlLabel, Col } from 'react-bootstrap';
+import { Well, Form, FormGroup, FormControl, Checkbox, ControlLabel, Col } from 'react-bootstrap';
 import ReactSlider from 'react-slider';
 
 export default class FilterBox extends React.Component {
@@ -9,7 +9,8 @@ export default class FilterBox extends React.Component {
     this.state = {
       filter: {
         startDate: this.props.minYear,
-        endDate: this.props.maxYear
+        endDate: this.props.maxYear,
+        includeNA: true
       }
     }
     this.handleInputChange = this.handleInputChange.bind(this);
@@ -69,15 +70,24 @@ export default class FilterBox extends React.Component {
             options={this.optionsForFilter("phase")}
           />
 
-          <label>Decision Date:</label> 
-          <ReactSlider
-            min={this.props.minYear}
-            max={this.props.maxYear}
-            withBars
-            pearling
-            value={[this.state.filter.startDate, this.state.filter.endDate]}
-            onChange={this.handleDateSliderChange}
-          />
+          <FormGroup controlId="decisionDate">
+            <ControlLabel>Decision Date</ControlLabel>
+            <Checkbox
+              checked={this.state.filter.includeNA}
+              name="includeNA"
+              onChange={this.handleInputChange}
+            >
+              Include Pending or Decision Date Not Available
+            </Checkbox>
+            <ReactSlider
+              min={this.props.minYear}
+              max={this.props.maxYear}
+              withBars
+              pearling
+              value={[this.state.filter.startDate, this.state.filter.endDate]}
+              onChange={this.handleDateSliderChange}
+            />
+          </FormGroup>
         </Form>
       </Well>
     );
