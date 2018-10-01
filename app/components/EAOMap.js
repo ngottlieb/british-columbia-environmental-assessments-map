@@ -119,6 +119,8 @@ export default class EAOMap extends React.Component {
     const position = this.state.latlng;
     const zoom = this.state.zoom;
     const access_token = 'pk.eyJ1IjoibmdvdHRsaWViIiwiYSI6ImNqOW9uNGRzYTVmNjgzM21xemt0ZHVxZHoifQ.A6Mc9XJp5q23xmPpqbTAcQ'
+    const markers = (<ProjectMarkers projects={this.state.currProjects} />);
+    const isLoading = this.state.projects.length == 0;
     const map = (
       <div>
         <Map center={position} zoom={zoom}>
@@ -129,7 +131,7 @@ export default class EAOMap extends React.Component {
             attribution="data <a href='https://projects.eao.gov.bc.ca/'>courtesy of the BC government</a>"
             minZoom={5}
           />
-          <ProjectMarkers projects={this.state.currProjects} />
+          { isLoading ? (<Spinner />) : markers }
         </Map>
         <FilterBox
           optionsForFilters={this.state.optionsForFilters}
@@ -144,12 +146,10 @@ export default class EAOMap extends React.Component {
 }
 
 const ProjectMarkers = ({ projects }) => {
-  if (projects && projects.length > 0) {
+  if (projects) {
     const items = projects.map((props) => (
       <ProjectMarker key={props.id} {...props} />
     ));
     return <div style={{ display: 'none' }}>{items}</div>;
-  } else {
-    return <Spinner />;
   }
 }
