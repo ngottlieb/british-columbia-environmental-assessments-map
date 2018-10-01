@@ -1,44 +1,42 @@
 import React from 'react';
 import { MapControl } from 'react-leaflet';
-import DayPickerInput from 'react-day-picker/DayPickerInput';
-import moment from 'moment';
 import { Well, Form, FormGroup, FormControl, ControlLabel, Col } from 'react-bootstrap';
-
+import ReactSlider from 'react-slider';
 
 export default class FilterBox extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       filter: {
+        startDate: this.props.minYear,
+        endDate: this.props.maxYear
       }
     }
     this.handleInputChange = this.handleInputChange.bind(this);
-    this.handleDateChange = this.handleDateChange.bind(this);
+    this.handleDateSliderChange = this.handleDateSliderChange.bind(this);
   }
 
   handleInputChange(event) {
     const target = event.target;
     const value = target.type === 'checkbox' ? target.checked : target.value;
     const name = target.name;
-    console.log(name + " " + value);
     this.updateFilter({ [name]: value });
   }
 
   updateFilter(updates) {
     var newFilter = Object.assign({}, this.state.filter);
     Object.assign(newFilter, updates);
-    console.log(newFilter);
     this.setState({
-      filter: updates
+      filter: newFilter
     });
     this.props.applyFilter(newFilter);
   }
 
-  handleDateChange(day, modifiers, input) {
-    const target = input.getInput();
-    const name = target.name;
-    const value = target.value.trim();
-    this.updateFilter({ [name]: value });
+  handleDateSliderChange(value) {
+    this.updateFilter({
+      startDate: value[0],
+      endDate: value[1]
+    });
   }
 
   render() {
@@ -71,17 +69,14 @@ export default class FilterBox extends React.Component {
             options={this.optionsForFilter("phase")}
           />
 
-          <label>Start Date:</label> 
-          <DayPickerInput
-            onDayChange={this.handleDateChange}
-            value={this.state.filter.startDate}
-            inputProps={ { name: 'startDate' } }
-          />
-          <label>End Date:</label>
-          <DayPickerInput
-            onDayChange={this.handleDateChange}
-            value={this.state.filter.endDate}
-            inputProps={ { name: 'endDate' } }
+          <label>Decision Date:</label> 
+          <ReactSlider
+            min={this.props.minYear}
+            max={this.props.maxYear}
+            withBars
+            pearling
+            value={[this.state.filter.startDate, this.state.filter.endDate]}
+            onChange={this.handleDateSliderChange}
           />
         </Form>
       </Well>

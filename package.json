@@ -10,9 +10,11 @@
     "build": "brunch build --production"
   },
   "dependencies": {
+    "create-react-class": "^15.6.3",
     "moment": "^2.22.2",
     "react-bootstrap": "^0.32.4",
-    "react-day-picker": "^7.2.4"
+    "react-slider": "^0.11.2",
+    "react-spinner": "^0.2.7"
   },
   "devDependencies": {
     "auto-reload-brunch": "^2",

@@ -19,6 +19,13 @@ export default class EAOMap extends React.Component {
         lat: 55.4085,
         lng: -125.0257
       },
+      minYear: 1990,
+      maxYear: moment().year(),
+      optionsForFilters: {
+        typeOptions: [],
+        decisionOptions: [],
+        phaseOptions: []
+      },
       zoom: 6
     }
     this.applyFilter = this.applyFilter.bind(this);
@@ -29,7 +36,22 @@ export default class EAOMap extends React.Component {
     var self = this;
     fetch("https://cors-anywhere.herokuapp.com/https://projects.eao.gov.bc.ca/api/projects/published")
       .then(function(response) { return response.json(); })
-      .then(function(j) { self.setState({ projects: j, currProjects: self.filteredProjects(j, {}) }) });
+      .then(function(j) { self.setState({ projects: self.processProjects(j), currProjects: self.filteredProjects(j, {}) }) });
+  }
+
+  // get decisionYear for all projects
+  processProjects(projects) {
+    if (projects) {
+      this.setState({
+        optionsForFilters: this.optionsForFilters(projects)
+      });
+
+      projects.map((proj) => {
+        proj.decisionYear = moment(proj.decisionDate).year();
+        return proj;
+      });
+    }
+    return projects;
   }
 
   filteredProjects(projects, filter) {
@@ -40,12 +62,12 @@ export default class EAOMap extends React.Component {
       if (filter.phase && filter.phase !== proj.currentPhase.name) {return false; }
 
       if (filter.startDate) {
-        if (moment(filter.startDate) > moment(proj.decisionDate)) {
+        if (filter.startDate >= proj.decisionYear) {
           return false;
         }
       }
       if (filter.endDate) {
-        if (moment(filter.endDate) < moment(proj.decisionDate)) {
+        if (filter.endDate <= proj.decisionYear) {
           return false;
         }
       }
@@ -60,13 +82,13 @@ export default class EAOMap extends React.Component {
     });
   }
 
-  optionsForFilters() {
+  optionsForFilters(projects) {
     var options = {};
     // type options
-    const types = this.state.projects.map(function(p) { return p.type; });
+    const types = projects.map(function(p) { return p.type; });
     options.typeOptions = new Set(types)
 
-    var decisions = this.state.projects.map(function(p) { return p.eacDecision; });
+    var decisions = projects.map(function(p) { return p.eacDecision; });
     options.decisionOptions = new Set(decisions.filter(
       function(p) { 
         if (p) {
@@ -75,7 +97,7 @@ export default class EAOMap extends React.Component {
           return false;
         }}));
     
-    var phases = this.state.projects.map(function(p) { return p.currentPhase.name; });
+    var phases = projects.map(function(p) { return p.currentPhase.name; });
     options.phaseOptions = new Set(phases);
 
     return options;
@@ -99,8 +121,10 @@ export default class EAOMap extends React.Component {
           <ProjectMarkers projects={this.state.currProjects} />
         </Map>
         <FilterBox
-          optionsForFilters={this.optionsForFilters()}
+          optionsForFilters={this.state.optionsForFilters}
           applyFilter={this.applyFilter}
+          minYear={this.state.minYear}
+          maxYear={this.state.maxYear}
         />
       </div>
     );
