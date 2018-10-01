@@ -1,20 +1,17 @@
 import React from 'react';
 import { MapControl } from 'react-leaflet';
-import { Well, Form, FormGroup, FormControl, Checkbox, ControlLabel, Col } from 'react-bootstrap';
+import { Well, Form, FormGroup, FormControl, Checkbox, ControlLabel, Button } from 'react-bootstrap';
 import ReactSlider from 'react-slider';
 
 export default class FilterBox extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      filter: {
-        minYear: this.props.minYear,
-        maxYear: this.props.maxYear,
-        includeNA: true
-      }
+      filter: this.defaultFilter()
     }
     this.handleInputChange = this.handleInputChange.bind(this);
     this.handleDateSliderChange = this.handleDateSliderChange.bind(this);
+    this.resetFilter = this.resetFilter.bind(this);
   }
 
   handleInputChange(event) {
@@ -22,6 +19,25 @@ export default class FilterBox extends React.Component {
     const value = target.type === 'checkbox' ? target.checked : target.value;
     const name = target.name;
     this.updateFilter({ [name]: value });
+  }
+
+  defaultFilter() {
+    return {
+      startDate: this.props.minYear,
+      endDate: this.props.maxYear,
+      includeNA: true,
+      type: '',
+      decision: '',
+      phase: ''
+    };
+  }
+
+  resetFilter() {
+    const filter = this.defaultFilter();
+    this.setState({
+      filter: filter
+    });
+    this.props.applyFilter(filter);
   }
 
   updateFilter(updates) {
@@ -40,8 +56,14 @@ export default class FilterBox extends React.Component {
     });
   }
 
-  render() {
+  currentStartYear() {
+    return this.state.filter.startDate || this.props.minYear;
+  }
+  currentEndYear() {
+    return this.state.filter.endDate || this.props.maxYear;
+  }
 
+  render() {
     var decisionDateInputs;
     // only render the slider once we've established its bounds
     if (this.props.minYear && this.props.maxYear) {
@@ -61,9 +83,10 @@ export default class FilterBox extends React.Component {
             withBars
             pearling
             onChange={this.handleDateSliderChange}
+            value={[this.currentStartYear(), this.currentEndYear()]}
           >
-            <div>{this.state.filter.startDate || this.props.minYear}</div>
-            <div>{this.state.filter.endDate || this.props.maxYear}</div>
+            <div>{this.currentStartYear()}</div>
+            <div>{this.currentEndYear()}</div>
           </ReactSlider>
         </FormGroup>
       );
@@ -71,6 +94,14 @@ export default class FilterBox extends React.Component {
 
     return (
       <Well className='filter-box leaflet-top leaflet-control leaflet-right'>
+        <Button
+          bsStyle="primary"
+          bsSize="large"
+          onClick={this.resetFilter}
+          style={ { float: 'left' } }
+        >
+          Reset Filter
+        </Button>
         <h3>Filter Results</h3>
         <Form>
           <FilterSelect

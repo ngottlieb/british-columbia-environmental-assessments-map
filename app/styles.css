@@ -30,6 +30,10 @@ html, body, #appContainer, #app {
   pointer-events: auto;
 }
 
+.filter-box h3 {
+  margin-top: 0;
+}
+
 .slider {
   width: 100%;
   height: 50px;
