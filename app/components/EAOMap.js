@@ -73,12 +73,12 @@ export default class EAOMap extends React.Component {
       }
 
       if (filter.startDate && proj.decisionYear) {
-        if (filter.startDate >= proj.decisionYear) {
+        if (filter.startDate > proj.decisionYear) {
           return false;
         }
       }
       if (filter.endDate && proj.decisionYear) {
-        if (filter.endDate <= proj.decisionYear && proj.decisionYear) {
+        if (filter.endDate < proj.decisionYear && proj.decisionYear) {
           return false;
         }
       }
