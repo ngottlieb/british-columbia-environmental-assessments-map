@@ -12,6 +12,7 @@ exports.files = {
 exports.npm = {
   styles: {
     'leaflet': ['dist/leaflet.css'],
+    'react-spinner': ['react-spinner.css']
   }
 };
 

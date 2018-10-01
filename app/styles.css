@@ -53,3 +53,15 @@ html, body, #appContainer, #app {
   top: 20px;
   height: 10px;
 }
+
+.react-spinner {
+  width: 150px;
+  height: 150px;
+  z-index: 1000;
+  background-color: gray;
+  border-radius: 15px;
+}
+.react-spinner_bar {
+  top: 46%;
+  left: 40%;
+}

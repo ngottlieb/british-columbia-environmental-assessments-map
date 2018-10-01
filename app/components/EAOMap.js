@@ -5,6 +5,7 @@ import ProjectMarker from './ProjectMarker';
 import L from 'leaflet';
 import FilterBox from './FilterBox';
 import moment from 'moment';
+import Spinner from 'react-spinner';
 
 L.Icon.Default.imagePath =
   '//cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.4/images/';
@@ -133,9 +134,12 @@ export default class EAOMap extends React.Component {
 }
 
 const ProjectMarkers = ({ projects }) => {
-  const items = projects.map((props) => (
-    <ProjectMarker key={props.id} {...props} />
-  ));
-
-  return <div style={{ display: 'none' }}>{items}</div>
+  if (projects && projects.length > 0) {
+    const items = projects.map((props) => (
+      <ProjectMarker key={props.id} {...props} />
+    ));
+    return <div style={{ display: 'none' }}>{items}</div>;
+  } else {
+    return <Spinner />;
+  }
 }
