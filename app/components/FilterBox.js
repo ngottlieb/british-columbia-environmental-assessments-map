@@ -8,8 +8,8 @@ export default class FilterBox extends React.Component {
     super(props);
     this.state = {
       filter: {
-        startDate: this.props.minYear,
-        endDate: this.props.maxYear,
+        minYear: this.props.minYear,
+        maxYear: this.props.maxYear,
         includeNA: true
       }
     }
@@ -42,6 +42,33 @@ export default class FilterBox extends React.Component {
 
   render() {
 
+    var decisionDateInputs;
+    // only render the slider once we've established its bounds
+    if (this.props.minYear && this.props.maxYear) {
+      decisionDateInputs = (
+        <FormGroup controlId="decisionDate">
+          <ControlLabel>Decision Date</ControlLabel>
+          <Checkbox
+            checked={this.state.filter.includeNA}
+            name="includeNA"
+            onChange={this.handleInputChange}
+          >
+            Include Pending or Decision Date Not Available
+          </Checkbox>
+          <ReactSlider
+            min={this.props.minYear}
+            max={this.props.maxYear}
+            withBars
+            pearling
+            onChange={this.handleDateSliderChange}
+          >
+            <div>{this.state.filter.startDate || this.props.minYear}</div>
+            <div>{this.state.filter.endDate || this.props.maxYear}</div>
+          </ReactSlider>
+        </FormGroup>
+      );
+    }
+
     return (
       <Well className='filter-box leaflet-top leaflet-control leaflet-right'>
         <h3>Filter Results</h3>
@@ -70,26 +97,8 @@ export default class FilterBox extends React.Component {
             options={this.optionsForFilter("phase")}
           />
 
-          <FormGroup controlId="decisionDate">
-            <ControlLabel>Decision Date</ControlLabel>
-            <Checkbox
-              checked={this.state.filter.includeNA}
-              name="includeNA"
-              onChange={this.handleInputChange}
-            >
-              Include Pending or Decision Date Not Available
-            </Checkbox>
-            <ReactSlider
-              min={this.props.minYear}
-              max={this.props.maxYear}
-              withBars
-              pearling
-              onChange={this.handleDateSliderChange}
-            >
-              <div>{this.state.filter.startDate}</div>
-              <div>{this.state.filter.endDate}</div>
-            </ReactSlider>
-          </FormGroup>
+        { decisionDateInputs }
+
         </Form>
       </Well>
     );

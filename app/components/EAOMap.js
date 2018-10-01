@@ -20,8 +20,6 @@ export default class EAOMap extends React.Component {
         lat: 55.4085,
         lng: -125.0257
       },
-      minYear: 1980,
-      maxYear: moment().year(),
       optionsForFilters: {
         typeOptions: [],
         decisionOptions: [],
@@ -43,6 +41,7 @@ export default class EAOMap extends React.Component {
   // get decisionYear for all projects
   processProjects(projects) {
     if (projects) {
+      // get options for the drop down filters
       this.setState({
         optionsForFilters: this.optionsForFilters(projects)
       });
@@ -50,6 +49,13 @@ export default class EAOMap extends React.Component {
       projects.map((proj) => {
         proj.decisionYear = moment(proj.decisionDate).year();
         return proj;
+      });
+
+      // get beginning and end years for the date sliders
+      const years = projects.map(function(p) { return p.decisionYear; }).filter(function(y) { return (y ? y > 0 : false); });;
+      this.setState({
+        minYear: Math.min.apply(Math, years),
+        maxYear: Math.max.apply(Math, years)
       });
     }
     return projects;
