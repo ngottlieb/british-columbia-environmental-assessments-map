@@ -3330,6 +3330,972 @@ $export($export.S, 'Object', {
   })();
 });
 
+require.register("create-react-class/factory.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {"transform":["loose-envify"]}, "create-react-class");
+  (function() {
+    /**
+ * Copyright (c) 2013-present, Facebook, Inc.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+
+'use strict';
+
+var _assign = require('object-assign');
+
+var emptyObject = require('fbjs/lib/emptyObject');
+var _invariant = require('fbjs/lib/invariant');
+
+if ('development' !== 'production') {
+  var warning = require('fbjs/lib/warning');
+}
+
+var MIXINS_KEY = 'mixins';
+
+// Helper function to allow the creation of anonymous functions which do not
+// have .name set to the name of the variable being assigned to.
+function identity(fn) {
+  return fn;
+}
+
+var ReactPropTypeLocationNames;
+if ('development' !== 'production') {
+  ReactPropTypeLocationNames = {
+    prop: 'prop',
+    context: 'context',
+    childContext: 'child context'
+  };
+} else {
+  ReactPropTypeLocationNames = {};
+}
+
+function factory(ReactComponent, isValidElement, ReactNoopUpdateQueue) {
+  /**
+   * Policies that describe methods in `ReactClassInterface`.
+   */
+
+  var injectedMixins = [];
+
+  /**
+   * Composite components are higher-level components that compose other composite
+   * or host components.
+   *
+   * To create a new type of `ReactClass`, pass a specification of
+   * your new class to `React.createClass`. The only requirement of your class
+   * specification is that you implement a `render` method.
+   *
+   *   var MyComponent = React.createClass({
+   *     render: function() {
+   *       return <div>Hello World</div>;
+   *     }
+   *   });
+   *
+   * The class specification supports a specific protocol of methods that have
+   * special meaning (e.g. `render`). See `ReactClassInterface` for
+   * more the comprehensive protocol. Any other properties and methods in the
+   * class specification will be available on the prototype.
+   *
+   * @interface ReactClassInterface
+   * @internal
+   */
+  var ReactClassInterface = {
+    /**
+     * An array of Mixin objects to include when defining your component.
+     *
+     * @type {array}
+     * @optional
+     */
+    mixins: 'DEFINE_MANY',
+
+    /**
+     * An object containing properties and methods that should be defined on
+     * the component's constructor instead of its prototype (static methods).
+     *
+     * @type {object}
+     * @optional
+     */
+    statics: 'DEFINE_MANY',
+
+    /**
+     * Definition of prop types for this component.
+     *
+     * @type {object}
+     * @optional
+     */
+    propTypes: 'DEFINE_MANY',
+
+    /**
+     * Definition of context types for this component.
+     *
+     * @type {object}
+     * @optional
+     */
+    contextTypes: 'DEFINE_MANY',
+
+    /**
+     * Definition of context types this component sets for its children.
+     *
+     * @type {object}
+     * @optional
+     */
+    childContextTypes: 'DEFINE_MANY',
+
+    // ==== Definition methods ====
+
+    /**
+     * Invoked when the component is mounted. Values in the mapping will be set on
+     * `this.props` if that prop is not specified (i.e. using an `in` check).
+     *
+     * This method is invoked before `getInitialState` and therefore cannot rely
+     * on `this.state` or use `this.setState`.
+     *
+     * @return {object}
+     * @optional
+     */
+    getDefaultProps: 'DEFINE_MANY_MERGED',
+
+    /**
+     * Invoked once before the component is mounted. The return value will be used
+     * as the initial value of `this.state`.
+     *
+     *   getInitialState: function() {
+     *     return {
+     *       isOn: false,
+     *       fooBaz: new BazFoo()
+     *     }
+     *   }
+     *
+     * @return {object}
+     * @optional
+     */
+    getInitialState: 'DEFINE_MANY_MERGED',
+
+    /**
+     * @return {object}
+     * @optional
+     */
+    getChildContext: 'DEFINE_MANY_MERGED',
+
+    /**
+     * Uses props from `this.props` and state from `this.state` to render the
+     * structure of the component.
+     *
+     * No guarantees are made about when or how often this method is invoked, so
+     * it must not have side effects.
+     *
+     *   render: function() {
+     *     var name = this.props.name;
+     *     return <div>Hello, {name}!</div>;
+     *   }
+     *
+     * @return {ReactComponent}
+     * @required
+     */
+    render: 'DEFINE_ONCE',
+
+    // ==== Delegate methods ====
+
+    /**
+     * Invoked when the component is initially created and about to be mounted.
+     * This may have side effects, but any external subscriptions or data created
+     * by this method must be cleaned up in `componentWillUnmount`.
+     *
+     * @optional
+     */
+    componentWillMount: 'DEFINE_MANY',
+
+    /**
+     * Invoked when the component has been mounted and has a DOM representation.
+     * However, there is no guarantee that the DOM node is in the document.
+     *
+     * Use this as an opportunity to operate on the DOM when the component has
+     * been mounted (initialized and rendered) for the first time.
+     *
+     * @param {DOMElement} rootNode DOM element representing the component.
+     * @optional
+     */
+    componentDidMount: 'DEFINE_MANY',
+
+    /**
+     * Invoked before the component receives new props.
+     *
+     * Use this as an opportunity to react to a prop transition by updating the
+     * state using `this.setState`. Current props are accessed via `this.props`.
+     *
+     *   componentWillReceiveProps: function(nextProps, nextContext) {
+     *     this.setState({
+     *       likesIncreasing: nextProps.likeCount > this.props.likeCount
+     *     });
+     *   }
+     *
+     * NOTE: There is no equivalent `componentWillReceiveState`. An incoming prop
+     * transition may cause a state change, but the opposite is not true. If you
+     * need it, you are probably looking for `componentWillUpdate`.
+     *
+     * @param {object} nextProps
+     * @optional
+     */
+    componentWillReceiveProps: 'DEFINE_MANY',
+
+    /**
+     * Invoked while deciding if the component should be updated as a result of
+     * receiving new props, state and/or context.
+     *
+     * Use this as an opportunity to `return false` when you're certain that the
+     * transition to the new props/state/context will not require a component
+     * update.
+     *
+     *   shouldComponentUpdate: function(nextProps, nextState, nextContext) {
+     *     return !equal(nextProps, this.props) ||
+     *       !equal(nextState, this.state) ||
+     *       !equal(nextContext, this.context);
+     *   }
+     *
+     * @param {object} nextProps
+     * @param {?object} nextState
+     * @param {?object} nextContext
+     * @return {boolean} True if the component should update.
+     * @optional
+     */
+    shouldComponentUpdate: 'DEFINE_ONCE',
+
+    /**
+     * Invoked when the component is about to update due to a transition from
+     * `this.props`, `this.state` and `this.context` to `nextProps`, `nextState`
+     * and `nextContext`.
+     *
+     * Use this as an opportunity to perform preparation before an update occurs.
+     *
+     * NOTE: You **cannot** use `this.setState()` in this method.
+     *
+     * @param {object} nextProps
+     * @param {?object} nextState
+     * @param {?object} nextContext
+     * @param {ReactReconcileTransaction} transaction
+     * @optional
+     */
+    componentWillUpdate: 'DEFINE_MANY',
+
+    /**
+     * Invoked when the component's DOM representation has been updated.
+     *
+     * Use this as an opportunity to operate on the DOM when the component has
+     * been updated.
+     *
+     * @param {object} prevProps
+     * @param {?object} prevState
+     * @param {?object} prevContext
+     * @param {DOMElement} rootNode DOM element representing the component.
+     * @optional
+     */
+    componentDidUpdate: 'DEFINE_MANY',
+
+    /**
+     * Invoked when the component is about to be removed from its parent and have
+     * its DOM representation destroyed.
+     *
+     * Use this as an opportunity to deallocate any external resources.
+     *
+     * NOTE: There is no `componentDidUnmount` since your component will have been
+     * destroyed by that point.
+     *
+     * @optional
+     */
+    componentWillUnmount: 'DEFINE_MANY',
+
+    /**
+     * Replacement for (deprecated) `componentWillMount`.
+     *
+     * @optional
+     */
+    UNSAFE_componentWillMount: 'DEFINE_MANY',
+
+    /**
+     * Replacement for (deprecated) `componentWillReceiveProps`.
+     *
+     * @optional
+     */
+    UNSAFE_componentWillReceiveProps: 'DEFINE_MANY',
+
+    /**
+     * Replacement for (deprecated) `componentWillUpdate`.
+     *
+     * @optional
+     */
+    UNSAFE_componentWillUpdate: 'DEFINE_MANY',
+
+    // ==== Advanced methods ====
+
+    /**
+     * Updates the component's currently mounted DOM representation.
+     *
+     * By default, this implements React's rendering and reconciliation algorithm.
+     * Sophisticated clients may wish to override this.
+     *
+     * @param {ReactReconcileTransaction} transaction
+     * @internal
+     * @overridable
+     */
+    updateComponent: 'OVERRIDE_BASE'
+  };
+
+  /**
+   * Similar to ReactClassInterface but for static methods.
+   */
+  var ReactClassStaticInterface = {
+    /**
+     * This method is invoked after a component is instantiated and when it
+     * receives new props. Return an object to update state in response to
+     * prop changes. Return null to indicate no change to state.
+     *
+     * If an object is returned, its keys will be merged into the existing state.
+     *
+     * @return {object || null}
+     * @optional
+     */
+    getDerivedStateFromProps: 'DEFINE_MANY_MERGED'
+  };
+
+  /**
+   * Mapping from class specification keys to special processing functions.
+   *
+   * Although these are declared like instance properties in the specification
+   * when defining classes using `React.createClass`, they are actually static
+   * and are accessible on the constructor instead of the prototype. Despite
+   * being static, they must be defined outside of the "statics" key under
+   * which all other static methods are defined.
+   */
+  var RESERVED_SPEC_KEYS = {
+    displayName: function(Constructor, displayName) {
+      Constructor.displayName = displayName;
+    },
+    mixins: function(Constructor, mixins) {
+      if (mixins) {
+        for (var i = 0; i < mixins.length; i++) {
+          mixSpecIntoComponent(Constructor, mixins[i]);
+        }
+      }
+    },
+    childContextTypes: function(Constructor, childContextTypes) {
+      if ('development' !== 'production') {
+        validateTypeDef(Constructor, childContextTypes, 'childContext');
+      }
+      Constructor.childContextTypes = _assign(
+        {},
+        Constructor.childContextTypes,
+        childContextTypes
+      );
+    },
+    contextTypes: function(Constructor, contextTypes) {
+      if ('development' !== 'production') {
+        validateTypeDef(Constructor, contextTypes, 'context');
+      }
+      Constructor.contextTypes = _assign(
+        {},
+        Constructor.contextTypes,
+        contextTypes
+      );
+    },
+    /**
+     * Special case getDefaultProps which should move into statics but requires
+     * automatic merging.
+     */
+    getDefaultProps: function(Constructor, getDefaultProps) {
+      if (Constructor.getDefaultProps) {
+        Constructor.getDefaultProps = createMergedResultFunction(
+          Constructor.getDefaultProps,
+          getDefaultProps
+        );
+      } else {
+        Constructor.getDefaultProps = getDefaultProps;
+      }
+    },
+    propTypes: function(Constructor, propTypes) {
+      if ('development' !== 'production') {
+        validateTypeDef(Constructor, propTypes, 'prop');
+      }
+      Constructor.propTypes = _assign({}, Constructor.propTypes, propTypes);
+    },
+    statics: function(Constructor, statics) {
+      mixStaticSpecIntoComponent(Constructor, statics);
+    },
+    autobind: function() {}
+  };
+
+  function validateTypeDef(Constructor, typeDef, location) {
+    for (var propName in typeDef) {
+      if (typeDef.hasOwnProperty(propName)) {
+        // use a warning instead of an _invariant so components
+        // don't show up in prod but only in __DEV__
+        if ('development' !== 'production') {
+          warning(
+            typeof typeDef[propName] === 'function',
+            '%s: %s type `%s` is invalid; it must be a function, usually from ' +
+              'React.PropTypes.',
+            Constructor.displayName || 'ReactClass',
+            ReactPropTypeLocationNames[location],
+            propName
+          );
+        }
+      }
+    }
+  }
+
+  function validateMethodOverride(isAlreadyDefined, name) {
+    var specPolicy = ReactClassInterface.hasOwnProperty(name)
+      ? ReactClassInterface[name]
+      : null;
+
+    // Disallow overriding of base class methods unless explicitly allowed.
+    if (ReactClassMixin.hasOwnProperty(name)) {
+      _invariant(
+        specPolicy === 'OVERRIDE_BASE',
+        'ReactClassInterface: You are attempting to override ' +
+          '`%s` from your class specification. Ensure that your method names ' +
+          'do not overlap with React methods.',
+        name
+      );
+    }
+
+    // Disallow defining methods more than once unless explicitly allowed.
+    if (isAlreadyDefined) {
+      _invariant(
+        specPolicy === 'DEFINE_MANY' || specPolicy === 'DEFINE_MANY_MERGED',
+        'ReactClassInterface: You are attempting to define ' +
+          '`%s` on your component more than once. This conflict may be due ' +
+          'to a mixin.',
+        name
+      );
+    }
+  }
+
+  /**
+   * Mixin helper which handles policy validation and reserved
+   * specification keys when building React classes.
+   */
+  function mixSpecIntoComponent(Constructor, spec) {
+    if (!spec) {
+      if ('development' !== 'production') {
+        var typeofSpec = typeof spec;
+        var isMixinValid = typeofSpec === 'object' && spec !== null;
+
+        if ('development' !== 'production') {
+          warning(
+            isMixinValid,
+            "%s: You're attempting to include a mixin that is either null " +
+              'or not an object. Check the mixins included by the component, ' +
+              'as well as any mixins they include themselves. ' +
+              'Expected object but got %s.',
+            Constructor.displayName || 'ReactClass',
+            spec === null ? null : typeofSpec
+          );
+        }
+      }
+
+      return;
+    }
+
+    _invariant(
+      typeof spec !== 'function',
+      "ReactClass: You're attempting to " +
+        'use a component class or function as a mixin. Instead, just use a ' +
+        'regular object.'
+    );
+    _invariant(
+      !isValidElement(spec),
+      "ReactClass: You're attempting to " +
+        'use a component as a mixin. Instead, just use a regular object.'
+    );
+
+    var proto = Constructor.prototype;
+    var autoBindPairs = proto.__reactAutoBindPairs;
+
+    // By handling mixins before any other properties, we ensure the same
+    // chaining order is applied to methods with DEFINE_MANY policy, whether
+    // mixins are listed before or after these methods in the spec.
+    if (spec.hasOwnProperty(MIXINS_KEY)) {
+      RESERVED_SPEC_KEYS.mixins(Constructor, spec.mixins);
+    }
+
+    for (var name in spec) {
+      if (!spec.hasOwnProperty(name)) {
+        continue;
+      }
+
+      if (name === MIXINS_KEY) {
+        // We have already handled mixins in a special case above.
+        continue;
+      }
+
+      var property = spec[name];
+      var isAlreadyDefined = proto.hasOwnProperty(name);
+      validateMethodOverride(isAlreadyDefined, name);
+
+      if (RESERVED_SPEC_KEYS.hasOwnProperty(name)) {
+        RESERVED_SPEC_KEYS[name](Constructor, property);
+      } else {
+        // Setup methods on prototype:
+        // The following member methods should not be automatically bound:
+        // 1. Expected ReactClass methods (in the "interface").
+        // 2. Overridden methods (that were mixed in).
+        var isReactClassMethod = ReactClassInterface.hasOwnProperty(name);
+        var isFunction = typeof property === 'function';
+        var shouldAutoBind =
+          isFunction &&
+          !isReactClassMethod &&
+          !isAlreadyDefined &&
+          spec.autobind !== false;
+
+        if (shouldAutoBind) {
+          autoBindPairs.push(name, property);
+          proto[name] = property;
+        } else {
+          if (isAlreadyDefined) {
+            var specPolicy = ReactClassInterface[name];
+
+            // These cases should already be caught by validateMethodOverride.
+            _invariant(
+              isReactClassMethod &&
+                (specPolicy === 'DEFINE_MANY_MERGED' ||
+                  specPolicy === 'DEFINE_MANY'),
+              'ReactClass: Unexpected spec policy %s for key %s ' +
+                'when mixing in component specs.',
+              specPolicy,
+              name
+            );
+
+            // For methods which are defined more than once, call the existing
+            // methods before calling the new property, merging if appropriate.
+            if (specPolicy === 'DEFINE_MANY_MERGED') {
+              proto[name] = createMergedResultFunction(proto[name], property);
+            } else if (specPolicy === 'DEFINE_MANY') {
+              proto[name] = createChainedFunction(proto[name], property);
+            }
+          } else {
+            proto[name] = property;
+            if ('development' !== 'production') {
+              // Add verbose displayName to the function, which helps when looking
+              // at profiling tools.
+              if (typeof property === 'function' && spec.displayName) {
+                proto[name].displayName = spec.displayName + '_' + name;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  function mixStaticSpecIntoComponent(Constructor, statics) {
+    if (!statics) {
+      return;
+    }
+
+    for (var name in statics) {
+      var property = statics[name];
+      if (!statics.hasOwnProperty(name)) {
+        continue;
+      }
+
+      var isReserved = name in RESERVED_SPEC_KEYS;
+      _invariant(
+        !isReserved,
+        'ReactClass: You are attempting to define a reserved ' +
+          'property, `%s`, that shouldn\'t be on the "statics" key. Define it ' +
+          'as an instance property instead; it will still be accessible on the ' +
+          'constructor.',
+        name
+      );
+
+      var isAlreadyDefined = name in Constructor;
+      if (isAlreadyDefined) {
+        var specPolicy = ReactClassStaticInterface.hasOwnProperty(name)
+          ? ReactClassStaticInterface[name]
+          : null;
+
+        _invariant(
+          specPolicy === 'DEFINE_MANY_MERGED',
+          'ReactClass: You are attempting to define ' +
+            '`%s` on your component more than once. This conflict may be ' +
+            'due to a mixin.',
+          name
+        );
+
+        Constructor[name] = createMergedResultFunction(Constructor[name], property);
+
+        return;
+      }
+
+      Constructor[name] = property;
+    }
+  }
+
+  /**
+   * Merge two objects, but throw if both contain the same key.
+   *
+   * @param {object} one The first object, which is mutated.
+   * @param {object} two The second object
+   * @return {object} one after it has been mutated to contain everything in two.
+   */
+  function mergeIntoWithNoDuplicateKeys(one, two) {
+    _invariant(
+      one && two && typeof one === 'object' && typeof two === 'object',
+      'mergeIntoWithNoDuplicateKeys(): Cannot merge non-objects.'
+    );
+
+    for (var key in two) {
+      if (two.hasOwnProperty(key)) {
+        _invariant(
+          one[key] === undefined,
+          'mergeIntoWithNoDuplicateKeys(): ' +
+            'Tried to merge two objects with the same key: `%s`. This conflict ' +
+            'may be due to a mixin; in particular, this may be caused by two ' +
+            'getInitialState() or getDefaultProps() methods returning objects ' +
+            'with clashing keys.',
+          key
+        );
+        one[key] = two[key];
+      }
+    }
+    return one;
+  }
+
+  /**
+   * Creates a function that invokes two functions and merges their return values.
+   *
+   * @param {function} one Function to invoke first.
+   * @param {function} two Function to invoke second.
+   * @return {function} Function that invokes the two argument functions.
+   * @private
+   */
+  function createMergedResultFunction(one, two) {
+    return function mergedResult() {
+      var a = one.apply(this, arguments);
+      var b = two.apply(this, arguments);
+      if (a == null) {
+        return b;
+      } else if (b == null) {
+        return a;
+      }
+      var c = {};
+      mergeIntoWithNoDuplicateKeys(c, a);
+      mergeIntoWithNoDuplicateKeys(c, b);
+      return c;
+    };
+  }
+
+  /**
+   * Creates a function that invokes two functions and ignores their return vales.
+   *
+   * @param {function} one Function to invoke first.
+   * @param {function} two Function to invoke second.
+   * @return {function} Function that invokes the two argument functions.
+   * @private
+   */
+  function createChainedFunction(one, two) {
+    return function chainedFunction() {
+      one.apply(this, arguments);
+      two.apply(this, arguments);
+    };
+  }
+
+  /**
+   * Binds a method to the component.
+   *
+   * @param {object} component Component whose method is going to be bound.
+   * @param {function} method Method to be bound.
+   * @return {function} The bound method.
+   */
+  function bindAutoBindMethod(component, method) {
+    var boundMethod = method.bind(component);
+    if ('development' !== 'production') {
+      boundMethod.__reactBoundContext = component;
+      boundMethod.__reactBoundMethod = method;
+      boundMethod.__reactBoundArguments = null;
+      var componentName = component.constructor.displayName;
+      var _bind = boundMethod.bind;
+      boundMethod.bind = function(newThis) {
+        for (
+          var _len = arguments.length,
+            args = Array(_len > 1 ? _len - 1 : 0),
+            _key = 1;
+          _key < _len;
+          _key++
+        ) {
+          args[_key - 1] = arguments[_key];
+        }
+
+        // User is trying to bind() an autobound method; we effectively will
+        // ignore the value of "this" that the user is trying to use, so
+        // let's warn.
+        if (newThis !== component && newThis !== null) {
+          if ('development' !== 'production') {
+            warning(
+              false,
+              'bind(): React component methods may only be bound to the ' +
+                'component instance. See %s',
+              componentName
+            );
+          }
+        } else if (!args.length) {
+          if ('development' !== 'production') {
+            warning(
+              false,
+              'bind(): You are binding a component method to the component. ' +
+                'React does this for you automatically in a high-performance ' +
+                'way, so you can safely remove this call. See %s',
+              componentName
+            );
+          }
+          return boundMethod;
+        }
+        var reboundMethod = _bind.apply(boundMethod, arguments);
+        reboundMethod.__reactBoundContext = component;
+        reboundMethod.__reactBoundMethod = method;
+        reboundMethod.__reactBoundArguments = args;
+        return reboundMethod;
+      };
+    }
+    return boundMethod;
+  }
+
+  /**
+   * Binds all auto-bound methods in a component.
+   *
+   * @param {object} component Component whose method is going to be bound.
+   */
+  function bindAutoBindMethods(component) {
+    var pairs = component.__reactAutoBindPairs;
+    for (var i = 0; i < pairs.length; i += 2) {
+      var autoBindKey = pairs[i];
+      var method = pairs[i + 1];
+      component[autoBindKey] = bindAutoBindMethod(component, method);
+    }
+  }
+
+  var IsMountedPreMixin = {
+    componentDidMount: function() {
+      this.__isMounted = true;
+    }
+  };
+
+  var IsMountedPostMixin = {
+    componentWillUnmount: function() {
+      this.__isMounted = false;
+    }
+  };
+
+  /**
+   * Add more to the ReactClass base class. These are all legacy features and
+   * therefore not already part of the modern ReactComponent.
+   */
+  var ReactClassMixin = {
+    /**
+     * TODO: This will be deprecated because state should always keep a consistent
+     * type signature and the only use case for this, is to avoid that.
+     */
+    replaceState: function(newState, callback) {
+      this.updater.enqueueReplaceState(this, newState, callback);
+    },
+
+    /**
+     * Checks whether or not this composite component is mounted.
+     * @return {boolean} True if mounted, false otherwise.
+     * @protected
+     * @final
+     */
+    isMounted: function() {
+      if ('development' !== 'production') {
+        warning(
+          this.__didWarnIsMounted,
+          '%s: isMounted is deprecated. Instead, make sure to clean up ' +
+            'subscriptions and pending requests in componentWillUnmount to ' +
+            'prevent memory leaks.',
+          (this.constructor && this.constructor.displayName) ||
+            this.name ||
+            'Component'
+        );
+        this.__didWarnIsMounted = true;
+      }
+      return !!this.__isMounted;
+    }
+  };
+
+  var ReactClassComponent = function() {};
+  _assign(
+    ReactClassComponent.prototype,
+    ReactComponent.prototype,
+    ReactClassMixin
+  );
+
+  /**
+   * Creates a composite component class given a class specification.
+   * See https://facebook.github.io/react/docs/top-level-api.html#react.createclass
+   *
+   * @param {object} spec Class specification (which must define `render`).
+   * @return {function} Component constructor function.
+   * @public
+   */
+  function createClass(spec) {
+    // To keep our warnings more understandable, we'll use a little hack here to
+    // ensure that Constructor.name !== 'Constructor'. This makes sure we don't
+    // unnecessarily identify a class without displayName as 'Constructor'.
+    var Constructor = identity(function(props, context, updater) {
+      // This constructor gets overridden by mocks. The argument is used
+      // by mocks to assert on what gets mounted.
+
+      if ('development' !== 'production') {
+        warning(
+          this instanceof Constructor,
+          'Something is calling a React component directly. Use a factory or ' +
+            'JSX instead. See: https://fb.me/react-legacyfactory'
+        );
+      }
+
+      // Wire up auto-binding
+      if (this.__reactAutoBindPairs.length) {
+        bindAutoBindMethods(this);
+      }
+
+      this.props = props;
+      this.context = context;
+      this.refs = emptyObject;
+      this.updater = updater || ReactNoopUpdateQueue;
+
+      this.state = null;
+
+      // ReactClasses doesn't have constructors. Instead, they use the
+      // getInitialState and componentWillMount methods for initialization.
+
+      var initialState = this.getInitialState ? this.getInitialState() : null;
+      if ('development' !== 'production') {
+        // We allow auto-mocks to proceed as if they're returning null.
+        if (
+          initialState === undefined &&
+          this.getInitialState._isMockFunction
+        ) {
+          // This is probably bad practice. Consider warning here and
+          // deprecating this convenience.
+          initialState = null;
+        }
+      }
+      _invariant(
+        typeof initialState === 'object' && !Array.isArray(initialState),
+        '%s.getInitialState(): must return an object or null',
+        Constructor.displayName || 'ReactCompositeComponent'
+      );
+
+      this.state = initialState;
+    });
+    Constructor.prototype = new ReactClassComponent();
+    Constructor.prototype.constructor = Constructor;
+    Constructor.prototype.__reactAutoBindPairs = [];
+
+    injectedMixins.forEach(mixSpecIntoComponent.bind(null, Constructor));
+
+    mixSpecIntoComponent(Constructor, IsMountedPreMixin);
+    mixSpecIntoComponent(Constructor, spec);
+    mixSpecIntoComponent(Constructor, IsMountedPostMixin);
+
+    // Initialize the defaultProps property after all mixins have been merged.
+    if (Constructor.getDefaultProps) {
+      Constructor.defaultProps = Constructor.getDefaultProps();
+    }
+
+    if ('development' !== 'production') {
+      // This is a tag to indicate that the use of these method names is ok,
+      // since it's used with createClass. If it's not, then it's likely a
+      // mistake so we'll warn you to use the static property, property
+      // initializer or constructor respectively.
+      if (Constructor.getDefaultProps) {
+        Constructor.getDefaultProps.isReactClassApproved = {};
+      }
+      if (Constructor.prototype.getInitialState) {
+        Constructor.prototype.getInitialState.isReactClassApproved = {};
+      }
+    }
+
+    _invariant(
+      Constructor.prototype.render,
+      'createClass(...): Class specification must implement a `render` method.'
+    );
+
+    if ('development' !== 'production') {
+      warning(
+        !Constructor.prototype.componentShouldUpdate,
+        '%s has a method called ' +
+          'componentShouldUpdate(). Did you mean shouldComponentUpdate()? ' +
+          'The name is phrased as a question because the function is ' +
+          'expected to return a value.',
+        spec.displayName || 'A component'
+      );
+      warning(
+        !Constructor.prototype.componentWillRecieveProps,
+        '%s has a method called ' +
+          'componentWillRecieveProps(). Did you mean componentWillReceiveProps()?',
+        spec.displayName || 'A component'
+      );
+      warning(
+        !Constructor.prototype.UNSAFE_componentWillRecieveProps,
+        '%s has a method called UNSAFE_componentWillRecieveProps(). ' +
+          'Did you mean UNSAFE_componentWillReceiveProps()?',
+        spec.displayName || 'A component'
+      );
+    }
+
+    // Reduce time spent doing lookups by setting these on the prototype.
+    for (var methodName in ReactClassInterface) {
+      if (!Constructor.prototype[methodName]) {
+        Constructor.prototype[methodName] = null;
+      }
+    }
+
+    return Constructor;
+  }
+
+  return createClass;
+}
+
+module.exports = factory;
+  })();
+});
+
+require.register("create-react-class/index.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {"transform":["loose-envify"]}, "create-react-class");
+  (function() {
+    /**
+ * Copyright (c) 2013-present, Facebook, Inc.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+
+'use strict';
+
+var React = require('react');
+var factory = require('./factory');
+
+if (typeof React === 'undefined') {
+  throw Error(
+    'create-react-class could not find the React object. If you are using script tags, ' +
+      'make sure that React is being loaded before create-react-class.'
+  );
+}
+
+// Hack to grab NoopUpdateQueue from isomorphic React
+var ReactNoopUpdateQueue = new React.Component().updater;
+
+module.exports = factory(
+  React.Component,
+  React.isValidElement,
+  ReactNoopUpdateQueue
+);
+  })();
+});
+
 require.register("dom-helpers/activeElement.js", function(exports, require, module) {
   require = __makeRelativeRequire(require, {}, "dom-helpers");
   (function() {
@@ -4452,6 +5418,198 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 var size = void 0;
 
 module.exports = exports['default'];
+  })();
+});
+
+require.register("fbjs/lib/emptyFunction.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {"transform":["loose-envify"]}, "fbjs");
+  (function() {
+    "use strict";
+
+/**
+ * Copyright (c) 2013-present, Facebook, Inc.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ * 
+ */
+
+function makeEmptyFunction(arg) {
+  return function () {
+    return arg;
+  };
+}
+
+/**
+ * This function accepts and discards inputs; it has no side effects. This is
+ * primarily useful idiomatically for overridable function endpoints which
+ * always need to be callable, since JS lacks a null-call idiom ala Cocoa.
+ */
+var emptyFunction = function emptyFunction() {};
+
+emptyFunction.thatReturns = makeEmptyFunction;
+emptyFunction.thatReturnsFalse = makeEmptyFunction(false);
+emptyFunction.thatReturnsTrue = makeEmptyFunction(true);
+emptyFunction.thatReturnsNull = makeEmptyFunction(null);
+emptyFunction.thatReturnsThis = function () {
+  return this;
+};
+emptyFunction.thatReturnsArgument = function (arg) {
+  return arg;
+};
+
+module.exports = emptyFunction;
+  })();
+});
+
+require.register("fbjs/lib/emptyObject.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {"transform":["loose-envify"]}, "fbjs");
+  (function() {
+    /**
+ * Copyright (c) 2013-present, Facebook, Inc.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+
+'use strict';
+
+var emptyObject = {};
+
+if ('development' !== 'production') {
+  Object.freeze(emptyObject);
+}
+
+module.exports = emptyObject;
+  })();
+});
+
+require.register("fbjs/lib/invariant.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {"transform":["loose-envify"]}, "fbjs");
+  (function() {
+    /**
+ * Copyright (c) 2013-present, Facebook, Inc.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+
+'use strict';
+
+/**
+ * Use invariant() to assert state which your program assumes to be true.
+ *
+ * Provide sprintf-style format (only %s is supported) and arguments
+ * to provide information about what broke and what you were
+ * expecting.
+ *
+ * The invariant message will be stripped in production, but the invariant
+ * will remain to ensure logic does not differ in production.
+ */
+
+var validateFormat = function validateFormat(format) {};
+
+if ('development' !== 'production') {
+  validateFormat = function validateFormat(format) {
+    if (format === undefined) {
+      throw new Error('invariant requires an error message argument');
+    }
+  };
+}
+
+function invariant(condition, format, a, b, c, d, e, f) {
+  validateFormat(format);
+
+  if (!condition) {
+    var error;
+    if (format === undefined) {
+      error = new Error('Minified exception occurred; use the non-minified dev environment ' + 'for the full error message and additional helpful warnings.');
+    } else {
+      var args = [a, b, c, d, e, f];
+      var argIndex = 0;
+      error = new Error(format.replace(/%s/g, function () {
+        return args[argIndex++];
+      }));
+      error.name = 'Invariant Violation';
+    }
+
+    error.framesToPop = 1; // we don't care about invariant's own frame
+    throw error;
+  }
+}
+
+module.exports = invariant;
+  })();
+});
+
+require.register("fbjs/lib/warning.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {"transform":["loose-envify"]}, "fbjs");
+  (function() {
+    /**
+ * Copyright (c) 2014-present, Facebook, Inc.
+ *
+ * This source code is licensed under the MIT license found in the
+ * LICENSE file in the root directory of this source tree.
+ *
+ */
+
+'use strict';
+
+var emptyFunction = require('./emptyFunction');
+
+/**
+ * Similar to invariant but only logs a warning if the condition is not met.
+ * This can be used to log issues in development environments in critical
+ * paths. Removing the logging code for production environments will keep the
+ * same logic and follow the same code paths.
+ */
+
+var warning = emptyFunction;
+
+if ('development' !== 'production') {
+  var printWarning = function printWarning(format) {
+    for (var _len = arguments.length, args = Array(_len > 1 ? _len - 1 : 0), _key = 1; _key < _len; _key++) {
+      args[_key - 1] = arguments[_key];
+    }
+
+    var argIndex = 0;
+    var message = 'Warning: ' + format.replace(/%s/g, function () {
+      return args[argIndex++];
+    });
+    if (typeof console !== 'undefined') {
+      console.error(message);
+    }
+    try {
+      // --- Welcome to debugging React ---
+      // This error was thrown as a convenience so that you can use this stack
+      // to find the callsite that caused this warning to fire.
+      throw new Error(message);
+    } catch (x) {}
+  };
+
+  warning = function warning(condition, format) {
+    if (format === undefined) {
+      throw new Error('`warning(condition, format, ...args)` requires a warning ' + 'message argument');
+    }
+
+    if (format.indexOf('Failed Composite propType: ') === 0) {
+      return; // Ignore CompositeComponent proptype check.
+    }
+
+    if (!condition) {
+      for (var _len2 = arguments.length, args = Array(_len2 > 2 ? _len2 - 2 : 0), _key2 = 2; _key2 < _len2; _key2++) {
+        args[_key2 - 2] = arguments[_key2];
+      }
+
+      printWarning.apply(undefined, [format].concat(args));
+    }
+  };
+}
+
+module.exports = warning;
   })();
 });
 
@@ -43092,2914 +44250,6 @@ module.exports = warning;
   })();
 });
 
-require.register("react-day-picker/DayPickerInput.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    /*
-  Used to import DayPickerInput. e.g. `import DayPickerInput from 'react-day-picker/DayPickerInput'`
-*/
-
-/* eslint-disable no-var */
-/* eslint-env node */
-
-var DayPickerInput = require('./lib/src/DayPickerInput');
-
-module.exports = DayPickerInput;
-  })();
-});
-
-require.register("react-day-picker/lib/src/Caption.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _react = require('react');
-
-var _react2 = _interopRequireDefault(_react);
-
-var _propTypes = require('prop-types');
-
-var _propTypes2 = _interopRequireDefault(_propTypes);
-
-var _LocaleUtils = require('./LocaleUtils');
-
-var _LocaleUtils2 = _interopRequireDefault(_LocaleUtils);
-
-var _keys = require('./keys');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var Caption = function (_Component) {
-  _inherits(Caption, _Component);
-
-  function Caption(props) {
-    _classCallCheck(this, Caption);
-
-    var _this = _possibleConstructorReturn(this, (Caption.__proto__ || Object.getPrototypeOf(Caption)).call(this, props));
-
-    _this.handleKeyUp = _this.handleKeyUp.bind(_this);
-    return _this;
-  }
-
-  _createClass(Caption, [{
-    key: 'shouldComponentUpdate',
-    value: function shouldComponentUpdate(nextProps) {
-      return nextProps.locale !== this.props.locale || nextProps.classNames !== this.props.classNames || nextProps.date.getMonth() !== this.props.date.getMonth() || nextProps.date.getFullYear() !== this.props.date.getFullYear();
-    }
-  }, {
-    key: 'handleKeyUp',
-    value: function handleKeyUp(e) {
-      if (e.keyCode === _keys.ENTER) {
-        this.props.onClick(e);
-      }
-    }
-  }, {
-    key: 'render',
-    value: function render() {
-      var _props = this.props,
-          classNames = _props.classNames,
-          date = _props.date,
-          months = _props.months,
-          locale = _props.locale,
-          localeUtils = _props.localeUtils,
-          onClick = _props.onClick;
-
-      return _react2.default.createElement(
-        'div',
-        { className: classNames.caption, role: 'heading' },
-        _react2.default.createElement(
-          'div',
-          { onClick: onClick, onKeyUp: this.handleKeyUp },
-          months ? months[date.getMonth()] + ' ' + date.getFullYear() : localeUtils.formatMonthTitle(date, locale)
-        )
-      );
-    }
-  }]);
-
-  return Caption;
-}(_react.Component);
-
-Caption.defaultProps = {
-  localeUtils: _LocaleUtils2.default
-};
-exports.default = Caption;
-Caption.propTypes = 'development' !== "production" ? {
-  date: _propTypes2.default.instanceOf(Date),
-  months: _propTypes2.default.arrayOf(_propTypes2.default.string),
-  locale: _propTypes2.default.string,
-  localeUtils: _propTypes2.default.object,
-  onClick: _propTypes2.default.func,
-  classNames: _propTypes2.default.shape({
-    caption: _propTypes2.default.string.isRequired
-  }).isRequired
-} : {};
-//# sourceMappingURL=Caption.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/DateUtils.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    "use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.clone = clone;
-exports.isDate = isDate;
-exports.addMonths = addMonths;
-exports.isSameDay = isSameDay;
-exports.isSameMonth = isSameMonth;
-exports.isDayBefore = isDayBefore;
-exports.isDayAfter = isDayAfter;
-exports.isPastDay = isPastDay;
-exports.isFutureDay = isFutureDay;
-exports.isDayBetween = isDayBetween;
-exports.addDayToRange = addDayToRange;
-exports.isDayInRange = isDayInRange;
-exports.getWeekNumber = getWeekNumber;
-/**
- * Clone a date object.
- *
- * @export
- * @param  {Date} d The date to clone
- * @return {Date} The cloned date
- */
-function clone(d) {
-  return new Date(d.getTime());
-}
-
-/**
- * Return `true` if the passed value is a valid JavaScript Date object.
- *
- * @export
- * @param {any} value
- * @returns {Boolean}
- */
-function isDate(value) {
-  return value instanceof Date && !isNaN(value.valueOf());
-}
-
-/**
- * Return `d` as a new date with `n` months added.
- *
- * @export
- * @param {[type]} d
- * @param {[type]} n
- */
-function addMonths(d, n) {
-  var newDate = clone(d);
-  newDate.setMonth(d.getMonth() + n);
-  return newDate;
-}
-
-/**
- * Return `true` if two dates are the same day, ignoring the time.
- *
- * @export
- * @param  {Date}  d1
- * @param  {Date}  d2
- * @return {Boolean}
- */
-function isSameDay(d1, d2) {
-  if (!d1 || !d2) {
-    return false;
-  }
-  return d1.getDate() === d2.getDate() && d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
-}
-
-/**
- * Return `true` if two dates fall in the same month.
- *
- * @export
- * @param  {Date}  d1
- * @param  {Date}  d2
- * @return {Boolean}
- */
-function isSameMonth(d1, d2) {
-  if (!d1 || !d2) {
-    return false;
-  }
-  return d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear();
-}
-
-/**
- * Returns `true` if the first day is before the second day.
- *
- * @export
- * @param {Date} d1
- * @param {Date} d2
- * @returns {Boolean}
- */
-function isDayBefore(d1, d2) {
-  var day1 = clone(d1).setHours(0, 0, 0, 0);
-  var day2 = clone(d2).setHours(0, 0, 0, 0);
-  return day1 < day2;
-}
-
-/**
- * Returns `true` if the first day is after the second day.
- *
- * @export
- * @param {Date} d1
- * @param {Date} d2
- * @returns {Boolean}
- */
-function isDayAfter(d1, d2) {
-  var day1 = clone(d1).setHours(0, 0, 0, 0);
-  var day2 = clone(d2).setHours(0, 0, 0, 0);
-  return day1 > day2;
-}
-
-/**
- * Return `true` if a day is in the past, e.g. yesterday or any day
- * before yesterday.
- *
- * @export
- * @param  {Date}  d
- * @return {Boolean}
- */
-function isPastDay(d) {
-  var today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return isDayBefore(d, today);
-}
-
-/**
- * Return `true` if a day is in the future, e.g. tomorrow or any day
- * after tomorrow.
- *
- * @export
- * @param  {Date}  d
- * @return {Boolean}
- */
-function isFutureDay(d) {
-  var tomorrow = new Date(new Date().getTime() + 24 * 60 * 60 * 1000);
-  tomorrow.setHours(0, 0, 0, 0);
-  return d >= tomorrow;
-}
-
-/**
- * Return `true` if day `d` is between days `d1` and `d2`,
- * without including them.
- *
- * @export
- * @param  {Date}  d
- * @param  {Date}  d1
- * @param  {Date}  d2
- * @return {Boolean}
- */
-function isDayBetween(d, d1, d2) {
-  var date = clone(d);
-  date.setHours(0, 0, 0, 0);
-  return isDayAfter(date, d1) && isDayBefore(date, d2) || isDayAfter(date, d2) && isDayBefore(date, d1);
-}
-
-/**
- * Add a day to a range and return a new range. A range is an object with
- * `from` and `to` days.
- *
- * @export
- * @param {Date} day
- * @param {Object} range
- * @return {Object} Returns a new range object
- */
-function addDayToRange(day) {
-  var range = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : { from: null, to: null };
-  var from = range.from,
-      to = range.to;
-
-  if (!from) {
-    from = day;
-  } else if (from && to && isSameDay(from, to) && isSameDay(day, from)) {
-    from = null;
-    to = null;
-  } else if (to && isDayBefore(day, from)) {
-    from = day;
-  } else if (to && isSameDay(day, to)) {
-    from = day;
-    to = day;
-  } else {
-    to = day;
-    if (isDayBefore(to, from)) {
-      to = from;
-      from = day;
-    }
-  }
-
-  return { from: from, to: to };
-}
-
-/**
- * Return `true` if a day is included in a range of days.
- *
- * @export
- * @param  {Date}  day
- * @param  {Object}  range
- * @return {Boolean}
- */
-function isDayInRange(day, range) {
-  var from = range.from,
-      to = range.to;
-
-  return from && isSameDay(day, from) || to && isSameDay(day, to) || from && to && isDayBetween(day, from, to);
-}
-
-/**
- * Return the year's week number (as per ISO, i.e. with the week starting from monday)
- * for the given day.
- *
- * @export
- * @param {Date} day
- * @returns {Number}
- */
-function getWeekNumber(day) {
-  var date = clone(day);
-  date.setHours(0, 0, 0);
-  date.setDate(date.getDate() + 4 - (date.getDay() || 7));
-  return Math.ceil(((date - new Date(date.getFullYear(), 0, 1)) / 8.64e7 + 1) / 7);
-}
-
-exports.default = {
-  addDayToRange: addDayToRange,
-  addMonths: addMonths,
-  clone: clone,
-  getWeekNumber: getWeekNumber,
-  isDate: isDate,
-  isDayAfter: isDayAfter,
-  isDayBefore: isDayBefore,
-  isDayBetween: isDayBetween,
-  isDayInRange: isDayInRange,
-  isFutureDay: isFutureDay,
-  isPastDay: isPastDay,
-  isSameDay: isSameDay,
-  isSameMonth: isSameMonth
-};
-//# sourceMappingURL=DateUtils.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/Day.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _react = require('react');
-
-var _react2 = _interopRequireDefault(_react);
-
-var _propTypes = require('prop-types');
-
-var _propTypes2 = _interopRequireDefault(_propTypes);
-
-var _DateUtils = require('./DateUtils');
-
-var _Helpers = require('./Helpers');
-
-var _classNames = require('./classNames');
-
-var _classNames2 = _interopRequireDefault(_classNames);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; } /* eslint-disable jsx-a11y/no-static-element-interactions, react/forbid-prop-types */
-
-function handleEvent(handler, day, modifiers) {
-  if (!handler) {
-    return undefined;
-  }
-  return function (e) {
-    e.persist();
-    handler(day, modifiers, e);
-  };
-}
-
-var Day = function (_Component) {
-  _inherits(Day, _Component);
-
-  function Day() {
-    _classCallCheck(this, Day);
-
-    return _possibleConstructorReturn(this, (Day.__proto__ || Object.getPrototypeOf(Day)).apply(this, arguments));
-  }
-
-  _createClass(Day, [{
-    key: 'shouldComponentUpdate',
-    value: function shouldComponentUpdate(nextProps) {
-      var _this2 = this;
-
-      var propNames = Object.keys(this.props);
-      var nextPropNames = Object.keys(nextProps);
-      if (propNames.length !== nextPropNames.length) {
-        return true;
-      }
-      return propNames.some(function (name) {
-        if (name === 'modifiers' || name === 'modifiersStyles' || name === 'classNames') {
-          var prop = _this2.props[name];
-          var nextProp = nextProps[name];
-          var modifiers = Object.keys(prop);
-          var nextModifiers = Object.keys(nextProp);
-          if (modifiers.length !== nextModifiers.length) {
-            return true;
-          }
-          return modifiers.some(function (mod) {
-            return !(0, _Helpers.hasOwnProp)(nextProp, mod) || prop[mod] !== nextProp[mod];
-          });
-        }
-        if (name === 'day') {
-          return !(0, _DateUtils.isSameDay)(_this2.props[name], nextProps[name]);
-        }
-        return !(0, _Helpers.hasOwnProp)(nextProps, name) || _this2.props[name] !== nextProps[name];
-      });
-    }
-  }, {
-    key: 'render',
-    value: function render() {
-      var _props = this.props,
-          classNames = _props.classNames,
-          modifiersStyles = _props.modifiersStyles,
-          day = _props.day,
-          tabIndex = _props.tabIndex,
-          empty = _props.empty,
-          modifiers = _props.modifiers,
-          onMouseEnter = _props.onMouseEnter,
-          onMouseLeave = _props.onMouseLeave,
-          onMouseUp = _props.onMouseUp,
-          onMouseDown = _props.onMouseDown,
-          onClick = _props.onClick,
-          onKeyDown = _props.onKeyDown,
-          onTouchStart = _props.onTouchStart,
-          onTouchEnd = _props.onTouchEnd,
-          onFocus = _props.onFocus,
-          ariaLabel = _props.ariaLabel,
-          ariaDisabled = _props.ariaDisabled,
-          ariaSelected = _props.ariaSelected,
-          children = _props.children;
-
-
-      var className = classNames.day;
-      if (classNames !== _classNames2.default) {
-        // When using CSS modules prefix the modifier as required by the BEM syntax
-        className += ' ' + Object.keys(modifiers).join(' ');
-      } else {
-        className += Object.keys(modifiers).map(function (modifier) {
-          return ' ' + className + '--' + modifier;
-        }).join('');
-      }
-
-      var style = void 0;
-      if (modifiersStyles) {
-        Object.keys(modifiers).filter(function (modifier) {
-          return !!modifiersStyles[modifier];
-        }).forEach(function (modifier) {
-          style = _extends({}, style, modifiersStyles[modifier]);
-        });
-      }
-
-      if (empty) {
-        return _react2.default.createElement('div', { 'aria-disabled': true, className: className, style: style });
-      }
-      return _react2.default.createElement(
-        'div',
-        {
-          className: className,
-          tabIndex: tabIndex,
-          style: style,
-          role: 'gridcell',
-          'aria-label': ariaLabel,
-          'aria-disabled': ariaDisabled,
-          'aria-selected': ariaSelected,
-          onClick: handleEvent(onClick, day, modifiers),
-          onKeyDown: handleEvent(onKeyDown, day, modifiers),
-          onMouseEnter: handleEvent(onMouseEnter, day, modifiers),
-          onMouseLeave: handleEvent(onMouseLeave, day, modifiers),
-          onMouseUp: handleEvent(onMouseUp, day, modifiers),
-          onMouseDown: handleEvent(onMouseDown, day, modifiers),
-          onTouchEnd: handleEvent(onTouchEnd, day, modifiers),
-          onTouchStart: handleEvent(onTouchStart, day, modifiers),
-          onFocus: handleEvent(onFocus, day, modifiers)
-        },
-        children
-      );
-    }
-  }]);
-
-  return Day;
-}(_react.Component);
-
-Day.defaultProps = {
-  tabIndex: -1
-};
-Day.defaultProps = {
-  modifiers: {},
-  modifiersStyles: {},
-  empty: false
-};
-exports.default = Day;
-Day.propTypes = 'development' !== "production" ? {
-  classNames: _propTypes2.default.shape({
-    day: _propTypes2.default.string.isRequired
-  }).isRequired,
-
-  day: _propTypes2.default.instanceOf(Date).isRequired,
-  children: _propTypes2.default.node.isRequired,
-
-  ariaDisabled: _propTypes2.default.bool,
-  ariaLabel: _propTypes2.default.string,
-  ariaSelected: _propTypes2.default.bool,
-  empty: _propTypes2.default.bool,
-  modifiers: _propTypes2.default.object,
-  modifiersStyles: _propTypes2.default.object,
-  onClick: _propTypes2.default.func,
-  onKeyDown: _propTypes2.default.func,
-  onMouseEnter: _propTypes2.default.func,
-  onMouseLeave: _propTypes2.default.func,
-  onMouseDown: _propTypes2.default.func,
-  onMouseUp: _propTypes2.default.func,
-  onTouchEnd: _propTypes2.default.func,
-  onTouchStart: _propTypes2.default.func,
-  onFocus: _propTypes2.default.func,
-  tabIndex: _propTypes2.default.number
-} : {};
-//# sourceMappingURL=Day.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/DayPicker.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.ModifiersUtils = exports.LocaleUtils = exports.DateUtils = exports.DayPicker = undefined;
-
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _react = require('react');
-
-var _react2 = _interopRequireDefault(_react);
-
-var _propTypes = require('prop-types');
-
-var _propTypes2 = _interopRequireDefault(_propTypes);
-
-var _Caption = require('./Caption');
-
-var _Caption2 = _interopRequireDefault(_Caption);
-
-var _Navbar = require('./Navbar');
-
-var _Navbar2 = _interopRequireDefault(_Navbar);
-
-var _Month = require('./Month');
-
-var _Month2 = _interopRequireDefault(_Month);
-
-var _Weekday = require('./Weekday');
-
-var _Weekday2 = _interopRequireDefault(_Weekday);
-
-var _Helpers = require('./Helpers');
-
-var Helpers = _interopRequireWildcard(_Helpers);
-
-var _DateUtils = require('./DateUtils');
-
-var DateUtils = _interopRequireWildcard(_DateUtils);
-
-var _LocaleUtils = require('./LocaleUtils');
-
-var LocaleUtils = _interopRequireWildcard(_LocaleUtils);
-
-var _ModifiersUtils = require('./ModifiersUtils');
-
-var ModifiersUtils = _interopRequireWildcard(_ModifiersUtils);
-
-var _classNames = require('./classNames');
-
-var _classNames2 = _interopRequireDefault(_classNames);
-
-var _keys = require('./keys');
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var DayPicker = exports.DayPicker = function (_Component) {
-  _inherits(DayPicker, _Component);
-
-  function DayPicker(props) {
-    _classCallCheck(this, DayPicker);
-
-    var _this = _possibleConstructorReturn(this, (DayPicker.__proto__ || Object.getPrototypeOf(DayPicker)).call(this, props));
-
-    _this.dayPicker = null;
-
-    _this.showNextMonth = function (callback) {
-      if (!_this.allowNextMonth()) {
-        return;
-      }
-      var deltaMonths = _this.props.pagedNavigation ? _this.props.numberOfMonths : 1;
-      var nextMonth = DateUtils.addMonths(_this.state.currentMonth, deltaMonths);
-      _this.showMonth(nextMonth, callback);
-    };
-
-    _this.showPreviousMonth = function (callback) {
-      if (!_this.allowPreviousMonth()) {
-        return;
-      }
-      var deltaMonths = _this.props.pagedNavigation ? _this.props.numberOfMonths : 1;
-      var previousMonth = DateUtils.addMonths(_this.state.currentMonth, -deltaMonths);
-      _this.showMonth(previousMonth, callback);
-    };
-
-    _this.handleKeyDown = function (e) {
-      e.persist();
-
-      switch (e.keyCode) {
-        case _keys.LEFT:
-          _this.showPreviousMonth();
-          break;
-        case _keys.RIGHT:
-          _this.showNextMonth();
-          break;
-        case _keys.UP:
-          _this.showPreviousYear();
-          break;
-        case _keys.DOWN:
-          _this.showNextYear();
-          break;
-        default:
-          break;
-      }
-
-      if (_this.props.onKeyDown) {
-        _this.props.onKeyDown(e);
-      }
-    };
-
-    _this.handleDayKeyDown = function (day, modifiers, e) {
-      e.persist();
-      switch (e.keyCode) {
-        case _keys.LEFT:
-          Helpers.cancelEvent(e);
-          _this.focusPreviousDay(e.target);
-          break;
-        case _keys.RIGHT:
-          Helpers.cancelEvent(e);
-          _this.focusNextDay(e.target);
-          break;
-        case _keys.UP:
-          Helpers.cancelEvent(e);
-          _this.focusPreviousWeek(e.target);
-          break;
-        case _keys.DOWN:
-          Helpers.cancelEvent(e);
-          _this.focusNextWeek(e.target);
-          break;
-        case _keys.ENTER:
-        case _keys.SPACE:
-          Helpers.cancelEvent(e);
-          if (_this.props.onDayClick) {
-            _this.handleDayClick(day, modifiers, e);
-          }
-          break;
-        default:
-          break;
-      }
-      if (_this.props.onDayKeyDown) {
-        _this.props.onDayKeyDown(day, modifiers, e);
-      }
-    };
-
-    _this.handleDayClick = function (day, modifiers, e) {
-      e.persist();
-
-      if (modifiers[_this.props.classNames.outside] && _this.props.enableOutsideDaysClick) {
-        _this.handleOutsideDayClick(day);
-      }
-      if (_this.props.onDayClick) {
-        _this.props.onDayClick(day, modifiers, e);
-      }
-    };
-
-    _this.handleTodayButtonClick = function (e) {
-      var today = new Date();
-      var month = new Date(today.getFullYear(), today.getMonth());
-      _this.showMonth(month);
-      e.target.blur();
-      if (_this.props.onTodayButtonClick) {
-        e.persist();
-        _this.props.onTodayButtonClick(new Date(today.getFullYear(), today.getMonth(), today.getDate()), ModifiersUtils.getModifiersForDay(today, _this.props.modifiers), e);
-      }
-    };
-
-    var currentMonth = _this.getCurrentMonthFromProps(props);
-    _this.state = { currentMonth: currentMonth };
-    return _this;
-  }
-
-  _createClass(DayPicker, [{
-    key: 'componentDidUpdate',
-    value: function componentDidUpdate(prevProps) {
-      // Changing the `month` props means changing the current displayed month
-      if (prevProps.month !== this.props.month && !DateUtils.isSameMonth(prevProps.month, this.props.month)) {
-        var currentMonth = this.getCurrentMonthFromProps(this.props);
-        // eslint-disable-next-line react/no-did-update-set-state
-        this.setState({ currentMonth: currentMonth });
-      }
-    }
-
-    /**
-     * Return the month to be shown in the calendar based on the component props.
-     *
-     * @param {Object} props
-     * @returns Date
-     * @memberof DayPicker
-     * @private
-     */
-
-  }, {
-    key: 'getCurrentMonthFromProps',
-    value: function getCurrentMonthFromProps(props) {
-      var initialMonth = Helpers.startOfMonth(props.month || props.initialMonth);
-      var currentMonth = initialMonth;
-
-      if (props.pagedNavigation && props.numberOfMonths > 1 && props.fromMonth) {
-        var fromMonth = Helpers.startOfMonth(props.fromMonth);
-        var diffInMonths = Helpers.getMonthsDiff(fromMonth, currentMonth);
-        currentMonth = DateUtils.addMonths(fromMonth, Math.floor(diffInMonths / props.numberOfMonths) * props.numberOfMonths);
-      } else if (props.toMonth && props.numberOfMonths > 1 && Helpers.getMonthsDiff(currentMonth, props.toMonth) <= 0) {
-        currentMonth = DateUtils.addMonths(Helpers.startOfMonth(props.toMonth), 1 - this.props.numberOfMonths);
-      }
-      return currentMonth;
-    }
-  }, {
-    key: 'getNextNavigableMonth',
-    value: function getNextNavigableMonth() {
-      return DateUtils.addMonths(this.state.currentMonth, this.props.numberOfMonths);
-    }
-  }, {
-    key: 'getPreviousNavigableMonth',
-    value: function getPreviousNavigableMonth() {
-      return DateUtils.addMonths(this.state.currentMonth, -1);
-    }
-  }, {
-    key: 'allowPreviousMonth',
-    value: function allowPreviousMonth() {
-      var previousMonth = DateUtils.addMonths(this.state.currentMonth, -1);
-      return this.allowMonth(previousMonth);
-    }
-  }, {
-    key: 'allowNextMonth',
-    value: function allowNextMonth() {
-      var nextMonth = DateUtils.addMonths(this.state.currentMonth, this.props.numberOfMonths);
-      return this.allowMonth(nextMonth);
-    }
-  }, {
-    key: 'allowMonth',
-    value: function allowMonth(d) {
-      var _props = this.props,
-          fromMonth = _props.fromMonth,
-          toMonth = _props.toMonth,
-          canChangeMonth = _props.canChangeMonth;
-
-      if (!canChangeMonth || fromMonth && Helpers.getMonthsDiff(fromMonth, d) < 0 || toMonth && Helpers.getMonthsDiff(toMonth, d) > 0) {
-        return false;
-      }
-      return true;
-    }
-  }, {
-    key: 'allowYearChange',
-    value: function allowYearChange() {
-      return this.props.canChangeMonth;
-    }
-  }, {
-    key: 'showMonth',
-    value: function showMonth(d, callback) {
-      var _this2 = this;
-
-      if (!this.allowMonth(d)) {
-        return;
-      }
-      this.setState({ currentMonth: Helpers.startOfMonth(d) }, function () {
-        if (callback) {
-          callback();
-        }
-        if (_this2.props.onMonthChange) {
-          _this2.props.onMonthChange(_this2.state.currentMonth);
-        }
-      });
-    }
-  }, {
-    key: 'showNextYear',
-    value: function showNextYear() {
-      if (!this.allowYearChange()) {
-        return;
-      }
-      var nextMonth = DateUtils.addMonths(this.state.currentMonth, 12);
-      this.showMonth(nextMonth);
-    }
-  }, {
-    key: 'showPreviousYear',
-    value: function showPreviousYear() {
-      if (!this.allowYearChange()) {
-        return;
-      }
-      var nextMonth = DateUtils.addMonths(this.state.currentMonth, -12);
-      this.showMonth(nextMonth);
-    }
-  }, {
-    key: 'focusFirstDayOfMonth',
-    value: function focusFirstDayOfMonth() {
-      Helpers.getDayNodes(this.dayPicker, this.props.classNames)[0].focus();
-    }
-  }, {
-    key: 'focusLastDayOfMonth',
-    value: function focusLastDayOfMonth() {
-      var dayNodes = Helpers.getDayNodes(this.dayPicker, this.props.classNames);
-      dayNodes[dayNodes.length - 1].focus();
-    }
-  }, {
-    key: 'focusPreviousDay',
-    value: function focusPreviousDay(dayNode) {
-      var _this3 = this;
-
-      var dayNodes = Helpers.getDayNodes(this.dayPicker, this.props.classNames);
-      var dayNodeIndex = Helpers.nodeListToArray(dayNodes).indexOf(dayNode);
-      if (dayNodeIndex === -1) return;
-      if (dayNodeIndex === 0) {
-        this.showPreviousMonth(function () {
-          return _this3.focusLastDayOfMonth();
-        });
-      } else {
-        dayNodes[dayNodeIndex - 1].focus();
-      }
-    }
-  }, {
-    key: 'focusNextDay',
-    value: function focusNextDay(dayNode) {
-      var _this4 = this;
-
-      var dayNodes = Helpers.getDayNodes(this.dayPicker, this.props.classNames);
-      var dayNodeIndex = Helpers.nodeListToArray(dayNodes).indexOf(dayNode);
-      if (dayNodeIndex === -1) return;
-      if (dayNodeIndex === dayNodes.length - 1) {
-        this.showNextMonth(function () {
-          return _this4.focusFirstDayOfMonth();
-        });
-      } else {
-        dayNodes[dayNodeIndex + 1].focus();
-      }
-    }
-  }, {
-    key: 'focusNextWeek',
-    value: function focusNextWeek(dayNode) {
-      var _this5 = this;
-
-      var dayNodes = Helpers.getDayNodes(this.dayPicker, this.props.classNames);
-      var dayNodeIndex = Helpers.nodeListToArray(dayNodes).indexOf(dayNode);
-      var isInLastWeekOfMonth = dayNodeIndex > dayNodes.length - 8;
-
-      if (isInLastWeekOfMonth) {
-        this.showNextMonth(function () {
-          var daysAfterIndex = dayNodes.length - dayNodeIndex;
-          var nextMonthDayNodeIndex = 7 - daysAfterIndex;
-          Helpers.getDayNodes(_this5.dayPicker, _this5.props.classNames)[nextMonthDayNodeIndex].focus();
-        });
-      } else {
-        dayNodes[dayNodeIndex + 7].focus();
-      }
-    }
-  }, {
-    key: 'focusPreviousWeek',
-    value: function focusPreviousWeek(dayNode) {
-      var _this6 = this;
-
-      var dayNodes = Helpers.getDayNodes(this.dayPicker, this.props.classNames);
-      var dayNodeIndex = Helpers.nodeListToArray(dayNodes).indexOf(dayNode);
-      var isInFirstWeekOfMonth = dayNodeIndex <= 6;
-
-      if (isInFirstWeekOfMonth) {
-        this.showPreviousMonth(function () {
-          var previousMonthDayNodes = Helpers.getDayNodes(_this6.dayPicker, _this6.props.classNames);
-          var startOfLastWeekOfMonth = previousMonthDayNodes.length - 7;
-          var previousMonthDayNodeIndex = startOfLastWeekOfMonth + dayNodeIndex;
-          previousMonthDayNodes[previousMonthDayNodeIndex].focus();
-        });
-      } else {
-        dayNodes[dayNodeIndex - 7].focus();
-      }
-    }
-
-    // Event handlers
-
-  }, {
-    key: 'handleOutsideDayClick',
-    value: function handleOutsideDayClick(day) {
-      var currentMonth = this.state.currentMonth;
-      var numberOfMonths = this.props.numberOfMonths;
-
-      var diffInMonths = Helpers.getMonthsDiff(currentMonth, day);
-      if (diffInMonths > 0 && diffInMonths >= numberOfMonths) {
-        this.showNextMonth();
-      } else if (diffInMonths < 0) {
-        this.showPreviousMonth();
-      }
-    }
-  }, {
-    key: 'renderNavbar',
-    value: function renderNavbar() {
-      var _props2 = this.props,
-          labels = _props2.labels,
-          locale = _props2.locale,
-          localeUtils = _props2.localeUtils,
-          canChangeMonth = _props2.canChangeMonth,
-          navbarElement = _props2.navbarElement,
-          attributes = _objectWithoutProperties(_props2, ['labels', 'locale', 'localeUtils', 'canChangeMonth', 'navbarElement']);
-
-      if (!canChangeMonth) return null;
-
-      var props = {
-        month: this.state.currentMonth,
-        classNames: this.props.classNames,
-        className: this.props.classNames.navBar,
-        nextMonth: this.getNextNavigableMonth(),
-        previousMonth: this.getPreviousNavigableMonth(),
-        showPreviousButton: this.allowPreviousMonth(),
-        showNextButton: this.allowNextMonth(),
-        onNextClick: this.showNextMonth,
-        onPreviousClick: this.showPreviousMonth,
-        dir: attributes.dir,
-        labels: labels,
-        locale: locale,
-        localeUtils: localeUtils
-      };
-      return _react2.default.isValidElement(navbarElement) ? _react2.default.cloneElement(navbarElement, props) : _react2.default.createElement(navbarElement, props);
-    }
-  }, {
-    key: 'renderMonths',
-    value: function renderMonths() {
-      var months = [];
-      var firstDayOfWeek = Helpers.getFirstDayOfWeekFromProps(this.props);
-      for (var i = 0; i < this.props.numberOfMonths; i += 1) {
-        var month = DateUtils.addMonths(this.state.currentMonth, i);
-        months.push(_react2.default.createElement(_Month2.default, _extends({
-          key: i
-        }, this.props, {
-          month: month,
-          firstDayOfWeek: firstDayOfWeek,
-          onDayKeyDown: this.handleDayKeyDown,
-          onDayClick: this.handleDayClick
-        })));
-      }
-
-      if (this.props.reverseMonths) {
-        months.reverse();
-      }
-      return months;
-    }
-  }, {
-    key: 'renderFooter',
-    value: function renderFooter() {
-      if (this.props.todayButton) {
-        return _react2.default.createElement(
-          'div',
-          { className: this.props.classNames.footer },
-          this.renderTodayButton()
-        );
-      }
-      return null;
-    }
-  }, {
-    key: 'renderTodayButton',
-    value: function renderTodayButton() {
-      return _react2.default.createElement(
-        'button',
-        {
-          type: 'button',
-          tabIndex: 0,
-          className: this.props.classNames.todayButton,
-          'aria-label': this.props.todayButton,
-          onClick: this.handleTodayButtonClick
-        },
-        this.props.todayButton
-      );
-    }
-  }, {
-    key: 'render',
-    value: function render() {
-      var _this7 = this;
-
-      var className = this.props.classNames.container;
-
-      if (!this.props.onDayClick) {
-        className = className + ' ' + this.props.classNames.interactionDisabled;
-      }
-      if (this.props.className) {
-        className = className + ' ' + this.props.className;
-      }
-      return _react2.default.createElement(
-        'div',
-        _extends({}, this.props.containerProps, {
-          className: className,
-          ref: function ref(el) {
-            return _this7.dayPicker = el;
-          },
-          lang: this.props.locale
-        }),
-        _react2.default.createElement(
-          'div',
-          {
-            className: this.props.classNames.wrapper,
-            tabIndex: this.props.canChangeMonth && typeof this.props.tabIndex !== 'undefined' ? this.props.tabIndex : -1,
-            onKeyDown: this.handleKeyDown,
-            onFocus: this.props.onFocus,
-            onBlur: this.props.onBlur
-          },
-          this.renderNavbar(),
-          _react2.default.createElement(
-            'div',
-            { className: this.props.classNames.months },
-            this.renderMonths()
-          ),
-          this.renderFooter()
-        )
-      );
-    }
-  }]);
-
-  return DayPicker;
-}(_react.Component);
-
-DayPicker.VERSION = '7.2.4';
-DayPicker.defaultProps = {
-  classNames: _classNames2.default,
-  tabIndex: 0,
-  initialMonth: new Date(),
-  numberOfMonths: 1,
-  labels: {
-    previousMonth: 'Previous Month',
-    nextMonth: 'Next Month'
-  },
-  locale: 'en',
-  localeUtils: LocaleUtils,
-  showOutsideDays: false,
-  enableOutsideDaysClick: true,
-  fixedWeeks: false,
-  canChangeMonth: true,
-  reverseMonths: false,
-  pagedNavigation: false,
-  showWeekNumbers: false,
-  showWeekDays: true,
-  renderDay: function renderDay(day) {
-    return day.getDate();
-  },
-  renderWeek: function renderWeek(weekNumber) {
-    return weekNumber;
-  },
-  weekdayElement: _react2.default.createElement(_Weekday2.default, null),
-  navbarElement: _react2.default.createElement(_Navbar2.default, { classNames: _classNames2.default }),
-  captionElement: _react2.default.createElement(_Caption2.default, { classNames: _classNames2.default })
-};
-DayPicker.propTypes = 'development' !== "production" ? {
-  // Rendering months
-  initialMonth: _propTypes2.default.instanceOf(Date),
-  month: _propTypes2.default.instanceOf(Date),
-  numberOfMonths: _propTypes2.default.number,
-  fromMonth: _propTypes2.default.instanceOf(Date),
-  toMonth: _propTypes2.default.instanceOf(Date),
-  canChangeMonth: _propTypes2.default.bool,
-  reverseMonths: _propTypes2.default.bool,
-  pagedNavigation: _propTypes2.default.bool,
-  todayButton: _propTypes2.default.string,
-  showWeekNumbers: _propTypes2.default.bool,
-  showWeekDays: _propTypes2.default.bool,
-
-  // Modifiers
-  selectedDays: _propTypes2.default.oneOfType([_propTypes2.default.object, _propTypes2.default.func, _propTypes2.default.array]),
-  disabledDays: _propTypes2.default.oneOfType([_propTypes2.default.object, _propTypes2.default.func, _propTypes2.default.array]),
-
-  modifiers: _propTypes2.default.object,
-  modifiersStyles: _propTypes2.default.object,
-
-  // Localization
-  dir: _propTypes2.default.string,
-  firstDayOfWeek: _propTypes2.default.oneOf([0, 1, 2, 3, 4, 5, 6]),
-  labels: _propTypes2.default.shape({
-    nextMonth: _propTypes2.default.string.isRequired,
-    previousMonth: _propTypes2.default.string.isRequired
-  }),
-  locale: _propTypes2.default.string,
-  localeUtils: _propTypes2.default.shape({
-    formatMonthTitle: _propTypes2.default.func,
-    formatWeekdayShort: _propTypes2.default.func,
-    formatWeekdayLong: _propTypes2.default.func,
-    getFirstDayOfWeek: _propTypes2.default.func
-  }),
-  months: _propTypes2.default.arrayOf(_propTypes2.default.string),
-  weekdaysLong: _propTypes2.default.arrayOf(_propTypes2.default.string),
-  weekdaysShort: _propTypes2.default.arrayOf(_propTypes2.default.string),
-
-  // Customization
-  showOutsideDays: _propTypes2.default.bool,
-  enableOutsideDaysClick: _propTypes2.default.bool,
-  fixedWeeks: _propTypes2.default.bool,
-
-  // CSS and HTML
-  classNames: _propTypes2.default.shape({
-    body: _propTypes2.default.string,
-    container: _propTypes2.default.string,
-    day: _propTypes2.default.string.isRequired,
-    disabled: _propTypes2.default.string.isRequired,
-    footer: _propTypes2.default.string,
-    interactionDisabled: _propTypes2.default.string,
-    months: _propTypes2.default.string,
-    month: _propTypes2.default.string,
-    navBar: _propTypes2.default.string,
-    outside: _propTypes2.default.string.isRequired,
-    selected: _propTypes2.default.string.isRequired,
-    today: _propTypes2.default.string.isRequired,
-    todayButton: _propTypes2.default.string,
-    week: _propTypes2.default.string,
-    wrapper: _propTypes2.default.string
-  }),
-  className: _propTypes2.default.string,
-  containerProps: _propTypes2.default.object,
-  tabIndex: _propTypes2.default.number,
-
-  // Custom elements
-  renderDay: _propTypes2.default.func,
-  renderWeek: _propTypes2.default.func,
-  weekdayElement: _propTypes2.default.oneOfType([_propTypes2.default.element, _propTypes2.default.func, _propTypes2.default.instanceOf(_react.Component)]),
-  navbarElement: _propTypes2.default.oneOfType([_propTypes2.default.element, _propTypes2.default.func, _propTypes2.default.instanceOf(_react.Component)]),
-  captionElement: _propTypes2.default.oneOfType([_propTypes2.default.element, _propTypes2.default.func, _propTypes2.default.instanceOf(_react.Component)]),
-
-  // Events
-  onBlur: _propTypes2.default.func,
-  onFocus: _propTypes2.default.func,
-  onKeyDown: _propTypes2.default.func,
-  onDayClick: _propTypes2.default.func,
-  onDayKeyDown: _propTypes2.default.func,
-  onDayMouseEnter: _propTypes2.default.func,
-  onDayMouseLeave: _propTypes2.default.func,
-  onDayMouseDown: _propTypes2.default.func,
-  onDayMouseUp: _propTypes2.default.func,
-  onDayTouchStart: _propTypes2.default.func,
-  onDayTouchEnd: _propTypes2.default.func,
-  onDayFocus: _propTypes2.default.func,
-  onMonthChange: _propTypes2.default.func,
-  onCaptionClick: _propTypes2.default.func,
-  onWeekClick: _propTypes2.default.func,
-  onTodayButtonClick: _propTypes2.default.func
-} : {};
-
-
-DayPicker.DateUtils = DateUtils;
-DayPicker.LocaleUtils = LocaleUtils;
-DayPicker.ModifiersUtils = ModifiersUtils;
-
-exports.DateUtils = DateUtils;
-exports.LocaleUtils = LocaleUtils;
-exports.ModifiersUtils = ModifiersUtils;
-exports.default = DayPicker;
-//# sourceMappingURL=DayPicker.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/DayPickerInput.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.HIDE_TIMEOUT = undefined;
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-exports.OverlayComponent = OverlayComponent;
-exports.defaultFormat = defaultFormat;
-exports.defaultParse = defaultParse;
-
-var _react = require('react');
-
-var _react2 = _interopRequireDefault(_react);
-
-var _propTypes = require('prop-types');
-
-var _propTypes2 = _interopRequireDefault(_propTypes);
-
-var _DayPicker = require('./DayPicker');
-
-var _DayPicker2 = _interopRequireDefault(_DayPicker);
-
-var _DateUtils = require('./DateUtils');
-
-var _ModifiersUtils = require('./ModifiersUtils');
-
-var _keys = require('./keys');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _defineProperty(obj, key, value) { if (key in obj) { Object.defineProperty(obj, key, { value: value, enumerable: true, configurable: true, writable: true }); } else { obj[key] = value; } return obj; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-function _objectWithoutProperties(obj, keys) { var target = {}; for (var i in obj) { if (keys.indexOf(i) >= 0) continue; if (!Object.prototype.hasOwnProperty.call(obj, i)) continue; target[i] = obj[i]; } return target; }
-
-// When clicking on a day cell, overlay will be hidden after this timeout
-var HIDE_TIMEOUT = exports.HIDE_TIMEOUT = 100;
-
-/**
- * The default component used as Overlay.
- *
- * @param {Object} props
- */
-function OverlayComponent(_ref) {
-  var input = _ref.input,
-      selectedDay = _ref.selectedDay,
-      month = _ref.month,
-      children = _ref.children,
-      classNames = _ref.classNames,
-      props = _objectWithoutProperties(_ref, ['input', 'selectedDay', 'month', 'children', 'classNames']);
-
-  return _react2.default.createElement(
-    'div',
-    _extends({ className: classNames.overlayWrapper }, props),
-    _react2.default.createElement(
-      'div',
-      { className: classNames.overlay },
-      children
-    )
-  );
-}
-
-OverlayComponent.propTypes = 'development' !== "production" ? {
-  input: _propTypes2.default.any,
-  selectedDay: _propTypes2.default.any,
-  month: _propTypes2.default.instanceOf(Date),
-  children: _propTypes2.default.node,
-  classNames: _propTypes2.default.object
-} : {};
-
-/**
- * The default function used to format a Date to String, passed to the `format`
- * prop.
- * @param {Date} d
- * @return {String}
- */
-function defaultFormat(d) {
-  if ((0, _DateUtils.isDate)(d)) {
-    var year = d.getFullYear();
-    var month = '' + (d.getMonth() + 1);
-    var day = '' + d.getDate();
-    return year + '-' + month + '-' + day;
-  }
-  return '';
-}
-
-/**
- * The default function used to parse a String as Date, passed to the `parse`
- * prop.
- * @param {String} str
- * @return {Date}
- */
-function defaultParse(str) {
-  if (typeof str !== 'string') {
-    return undefined;
-  }
-  var split = str.split('-');
-  if (split.length !== 3) {
-    return undefined;
-  }
-  var year = parseInt(split[0], 10);
-  var month = parseInt(split[1], 10) - 1;
-  var day = parseInt(split[2], 10);
-  if (isNaN(year) || String(year).length > 4 || isNaN(month) || isNaN(day) || day <= 0 || day > 31 || month < 0 || month >= 12) {
-    return undefined;
-  }
-
-  return new Date(year, month, day);
-}
-
-var DayPickerInput = function (_React$Component) {
-  _inherits(DayPickerInput, _React$Component);
-
-  function DayPickerInput(props) {
-    _classCallCheck(this, DayPickerInput);
-
-    var _this = _possibleConstructorReturn(this, (DayPickerInput.__proto__ || Object.getPrototypeOf(DayPickerInput)).call(this, props));
-
-    _this.input = null;
-    _this.daypicker = null;
-    _this.clickTimeout = null;
-    _this.hideTimeout = null;
-    _this.inputBlurTimeout = null;
-    _this.inputFocusTimeout = null;
-
-
-    _this.state = _this.getInitialStateFromProps(props);
-    _this.state.showOverlay = props.showOverlay;
-
-    _this.hideAfterDayClick = _this.hideAfterDayClick.bind(_this);
-    _this.handleInputClick = _this.handleInputClick.bind(_this);
-    _this.handleInputFocus = _this.handleInputFocus.bind(_this);
-    _this.handleInputBlur = _this.handleInputBlur.bind(_this);
-    _this.handleInputChange = _this.handleInputChange.bind(_this);
-    _this.handleInputKeyDown = _this.handleInputKeyDown.bind(_this);
-    _this.handleInputKeyUp = _this.handleInputKeyUp.bind(_this);
-    _this.handleDayClick = _this.handleDayClick.bind(_this);
-    _this.handleMonthChange = _this.handleMonthChange.bind(_this);
-    _this.handleOverlayFocus = _this.handleOverlayFocus.bind(_this);
-    _this.handleOverlayBlur = _this.handleOverlayBlur.bind(_this);
-    return _this;
-  }
-
-  _createClass(DayPickerInput, [{
-    key: 'componentDidUpdate',
-    value: function componentDidUpdate(prevProps) {
-      var newState = {};
-
-      // Current props
-      var _props = this.props,
-          value = _props.value,
-          formatDate = _props.formatDate,
-          format = _props.format,
-          dayPickerProps = _props.dayPickerProps;
-
-      // Update the input value if the `value` prop has changed
-
-      if (value !== prevProps.value) {
-        if ((0, _DateUtils.isDate)(value)) {
-          newState.value = formatDate(value, format, dayPickerProps.locale);
-        } else {
-          newState.value = value;
-        }
-      }
-
-      // Update the month if the months from props changed
-      var prevMonth = prevProps.dayPickerProps.month;
-      if (dayPickerProps.month && dayPickerProps.month !== prevMonth && !(0, _DateUtils.isSameMonth)(dayPickerProps.month, prevMonth)) {
-        newState.month = dayPickerProps.month;
-      }
-
-      // Updated the selected days from props if they changed
-      if (prevProps.dayPickerProps.selectedDays !== dayPickerProps.selectedDays) {
-        newState.selectedDays = dayPickerProps.selectedDays;
-      }
-
-      if (Object.keys(newState).length > 0) {
-        // eslint-disable-next-line react/no-did-update-set-state
-        this.setState(newState);
-      }
-    }
-  }, {
-    key: 'componentWillUnmount',
-    value: function componentWillUnmount() {
-      clearTimeout(this.clickTimeout);
-      clearTimeout(this.hideTimeout);
-      clearTimeout(this.inputFocusTimeout);
-      clearTimeout(this.inputBlurTimeout);
-      clearTimeout(this.overlayBlurTimeout);
-    }
-  }, {
-    key: 'getInitialMonthFromProps',
-    value: function getInitialMonthFromProps(props) {
-      var dayPickerProps = props.dayPickerProps,
-          format = props.format;
-
-      var day = void 0;
-      if (props.value) {
-        if ((0, _DateUtils.isDate)(props.value)) {
-          day = props.value;
-        } else {
-          day = props.parseDate(props.value, format, dayPickerProps.locale);
-        }
-      }
-      return dayPickerProps.initialMonth || dayPickerProps.month || day || new Date();
-    }
-  }, {
-    key: 'getInitialStateFromProps',
-    value: function getInitialStateFromProps(props) {
-      var dayPickerProps = props.dayPickerProps,
-          formatDate = props.formatDate,
-          format = props.format;
-      var value = props.value;
-
-      if (props.value && (0, _DateUtils.isDate)(props.value)) {
-        value = formatDate(props.value, format, dayPickerProps.locale);
-      }
-      return {
-        value: value,
-        month: this.getInitialMonthFromProps(props),
-        selectedDays: dayPickerProps.selectedDays
-      };
-    }
-  }, {
-    key: 'getInput',
-    value: function getInput() {
-      return this.input;
-    }
-  }, {
-    key: 'getDayPicker',
-    value: function getDayPicker() {
-      return this.daypicker;
-    }
-
-    /**
-     * Update the component's state and fire the `onDayChange` event passing the
-     * day's modifiers to it.
-     *
-     * @param {Date} day - Will be used for changing the month
-     * @param {String} value - Input field value
-     * @private
-     */
-
-  }, {
-    key: 'updateState',
-    value: function updateState(day, value, callback) {
-      var _this2 = this;
-
-      var _props2 = this.props,
-          dayPickerProps = _props2.dayPickerProps,
-          onDayChange = _props2.onDayChange;
-
-      this.setState({ month: day, value: value, typedValue: undefined }, function () {
-        if (callback) {
-          callback();
-        }
-        if (!onDayChange) {
-          return;
-        }
-        var modifiersObj = _extends({
-          disabled: dayPickerProps.disabledDays,
-          selected: dayPickerProps.selectedDays
-        }, dayPickerProps.modifiers);
-        var modifiers = (0, _ModifiersUtils.getModifiersForDay)(day, modifiersObj).reduce(function (obj, modifier) {
-          return _extends({}, obj, _defineProperty({}, modifier, true));
-        }, {});
-        onDayChange(day, modifiers, _this2);
-      });
-    }
-
-    /**
-     * Show the Day Picker overlay.
-     *
-     * @memberof DayPickerInput
-     */
-
-  }, {
-    key: 'showDayPicker',
-    value: function showDayPicker() {
-      var _props3 = this.props,
-          parseDate = _props3.parseDate,
-          format = _props3.format,
-          dayPickerProps = _props3.dayPickerProps;
-      var _state = this.state,
-          value = _state.value,
-          showOverlay = _state.showOverlay;
-
-      if (showOverlay) {
-        return;
-      }
-      // Reset the current displayed month when showing the overlay
-      var month = value ? parseDate(value, format, dayPickerProps.locale) // Use the month in the input field
-      : this.getInitialMonthFromProps(this.props); // Restore the month from the props
-      this.setState(function (state) {
-        return {
-          showOverlay: true,
-          month: month || state.month
-        };
-      });
-    }
-
-    /**
-     * Hide the Day Picker overlay
-     *
-     * @memberof DayPickerInput
-     */
-
-  }, {
-    key: 'hideDayPicker',
-    value: function hideDayPicker() {
-      var _this3 = this;
-
-      if (this.state.showOverlay === false) {
-        return;
-      }
-      this.setState({ showOverlay: false }, function () {
-        if (_this3.props.onDayPickerHide) _this3.props.onDayPickerHide();
-      });
-    }
-  }, {
-    key: 'hideAfterDayClick',
-    value: function hideAfterDayClick() {
-      var _this4 = this;
-
-      if (!this.props.hideOnDayClick) {
-        return;
-      }
-      this.hideTimeout = setTimeout(function () {
-        return _this4.hideDayPicker();
-      }, HIDE_TIMEOUT);
-    }
-  }, {
-    key: 'handleInputClick',
-    value: function handleInputClick(e) {
-      this.showDayPicker();
-      if (this.props.inputProps.onClick) {
-        e.persist();
-        this.props.inputProps.onClick(e);
-      }
-    }
-  }, {
-    key: 'handleInputFocus',
-    value: function handleInputFocus(e) {
-      var _this5 = this;
-
-      this.showDayPicker();
-      // Set `overlayHasFocus` after a timeout so the overlay can be hidden when
-      // the input is blurred
-      this.inputFocusTimeout = setTimeout(function () {
-        _this5.overlayHasFocus = false;
-      }, 2);
-      if (this.props.inputProps.onFocus) {
-        e.persist();
-        this.props.inputProps.onFocus(e);
-      }
-    }
-
-    // When the input is blurred, the overlay should disappear. However the input
-    // is blurred also when the user interacts with the overlay (e.g. the overlay
-    // get the focus by clicking it). In these cases, the overlay should not be
-    // hidden. There are different approaches to avoid hiding the overlay when
-    // this happens, but the only cross-browser hack we’ve found is to set all
-    // these timeouts in code before changing `overlayHasFocus`.
-
-  }, {
-    key: 'handleInputBlur',
-    value: function handleInputBlur(e) {
-      var _this6 = this;
-
-      this.inputBlurTimeout = setTimeout(function () {
-        if (!_this6.overlayHasFocus) {
-          _this6.hideDayPicker();
-        }
-      }, 1);
-      if (this.props.inputProps.onBlur) {
-        e.persist();
-        this.props.inputProps.onBlur(e);
-      }
-    }
-  }, {
-    key: 'handleOverlayFocus',
-    value: function handleOverlayFocus(e) {
-      e.preventDefault();
-      this.overlayHasFocus = true;
-      if (!this.props.keepFocus || !this.input || typeof this.input.focus !== 'function') {
-        return;
-      }
-      this.input.focus();
-    }
-  }, {
-    key: 'handleOverlayBlur',
-    value: function handleOverlayBlur() {
-      var _this7 = this;
-
-      // We need to set a timeout otherwise IE11 will hide the overlay when
-      // focusing it
-      this.overlayBlurTimeout = setTimeout(function () {
-        _this7.overlayHasFocus = false;
-      }, 3);
-    }
-  }, {
-    key: 'handleInputChange',
-    value: function handleInputChange(e) {
-      var _props4 = this.props,
-          dayPickerProps = _props4.dayPickerProps,
-          format = _props4.format,
-          inputProps = _props4.inputProps,
-          onDayChange = _props4.onDayChange,
-          parseDate = _props4.parseDate;
-
-      if (inputProps.onChange) {
-        e.persist();
-        inputProps.onChange(e);
-      }
-      var value = e.target.value;
-
-      if (value.trim() === '') {
-        this.setState({ value: value, typedValue: undefined });
-        if (onDayChange) onDayChange(undefined, {}, this);
-        return;
-      }
-      var day = parseDate(value, format, dayPickerProps.locale);
-      if (!day) {
-        // Day is invalid: we save the value in the typedValue state
-        this.setState({ value: value, typedValue: value });
-        if (onDayChange) onDayChange(undefined, {}, this);
-        return;
-      }
-      this.updateState(day, value);
-    }
-  }, {
-    key: 'handleInputKeyDown',
-    value: function handleInputKeyDown(e) {
-      if (e.keyCode === _keys.TAB) {
-        this.hideDayPicker();
-      } else {
-        this.showDayPicker();
-      }
-      if (this.props.inputProps.onKeyDown) {
-        e.persist();
-        this.props.inputProps.onKeyDown(e);
-      }
-    }
-  }, {
-    key: 'handleInputKeyUp',
-    value: function handleInputKeyUp(e) {
-      if (e.keyCode === _keys.ESC) {
-        this.hideDayPicker();
-      } else {
-        this.showDayPicker();
-      }
-      if (this.props.inputProps.onKeyUp) {
-        e.persist();
-        this.props.inputProps.onKeyUp(e);
-      }
-    }
-  }, {
-    key: 'handleMonthChange',
-    value: function handleMonthChange(month) {
-      var _this8 = this;
-
-      this.setState({ month: month }, function () {
-        if (_this8.props.dayPickerProps && _this8.props.dayPickerProps.onMonthChange) {
-          _this8.props.dayPickerProps.onMonthChange(month);
-        }
-      });
-    }
-  }, {
-    key: 'handleDayClick',
-    value: function handleDayClick(day, modifiers, e) {
-      var _this9 = this;
-
-      var _props5 = this.props,
-          clickUnselectsDay = _props5.clickUnselectsDay,
-          dayPickerProps = _props5.dayPickerProps,
-          onDayChange = _props5.onDayChange,
-          formatDate = _props5.formatDate,
-          format = _props5.format;
-
-      if (dayPickerProps.onDayClick) {
-        dayPickerProps.onDayClick(day, modifiers, e);
-      }
-
-      // Do nothing if the day is disabled
-      if (modifiers.disabled || dayPickerProps && dayPickerProps.classNames && modifiers[dayPickerProps.classNames.disabled]) {
-        return;
-      }
-
-      // If the clicked day is already selected, remove the clicked day
-      // from the selected days and empty the field value
-      if (modifiers.selected && clickUnselectsDay) {
-        var selectedDays = this.state.selectedDays;
-
-        if (Array.isArray(selectedDays)) {
-          selectedDays = selectedDays.slice(0);
-          var selectedDayIdx = selectedDays.indexOf(day);
-          selectedDays.splice(selectedDayIdx, 1);
-        } else if (selectedDays) {
-          selectedDays = null;
-        }
-        this.setState({ value: '', typedValue: undefined, selectedDays: selectedDays }, this.hideAfterDayClick);
-        if (onDayChange) {
-          onDayChange(undefined, modifiers, this);
-        }
-        return;
-      }
-
-      var value = formatDate(day, format, dayPickerProps.locale);
-      this.setState({ value: value, typedValue: undefined, month: day }, function () {
-        if (onDayChange) {
-          onDayChange(day, modifiers, _this9);
-        }
-        _this9.hideAfterDayClick();
-      });
-    }
-  }, {
-    key: 'renderOverlay',
-    value: function renderOverlay() {
-      var _this10 = this;
-
-      var _props6 = this.props,
-          classNames = _props6.classNames,
-          dayPickerProps = _props6.dayPickerProps,
-          parseDate = _props6.parseDate,
-          formatDate = _props6.formatDate,
-          format = _props6.format;
-      var _state2 = this.state,
-          selectedDays = _state2.selectedDays,
-          value = _state2.value;
-
-      var selectedDay = void 0;
-      if (!selectedDays && value) {
-        var day = parseDate(value, format, dayPickerProps.locale);
-        if (day) {
-          selectedDay = day;
-        }
-      } else if (selectedDays) {
-        selectedDay = selectedDays;
-      }
-      var onTodayButtonClick = void 0;
-      if (dayPickerProps.todayButton) {
-        // Set the current day when clicking the today button
-        onTodayButtonClick = function onTodayButtonClick() {
-          return _this10.updateState(new Date(), formatDate(new Date(), format, dayPickerProps.locale), _this10.hideAfterDayClick);
-        };
-      }
-      var Overlay = this.props.overlayComponent;
-      return _react2.default.createElement(
-        Overlay,
-        {
-          classNames: classNames,
-          month: this.state.month,
-          selectedDay: selectedDay,
-          input: this.input,
-          tabIndex: 0 // tabIndex is necessary to catch focus/blur events on Safari
-          , onFocus: this.handleOverlayFocus,
-          onBlur: this.handleOverlayBlur
-        },
-        _react2.default.createElement(_DayPicker2.default, _extends({
-          ref: function ref(el) {
-            return _this10.daypicker = el;
-          },
-          onTodayButtonClick: onTodayButtonClick
-        }, dayPickerProps, {
-          month: this.state.month,
-          selectedDays: selectedDay,
-          onDayClick: this.handleDayClick,
-          onMonthChange: this.handleMonthChange
-        }))
-      );
-    }
-  }, {
-    key: 'render',
-    value: function render() {
-      var _this11 = this;
-
-      var Input = this.props.component;
-      var inputProps = this.props.inputProps;
-
-      return _react2.default.createElement(
-        'div',
-        { className: this.props.classNames.container },
-        _react2.default.createElement(Input, _extends({
-          ref: function ref(el) {
-            return _this11.input = el;
-          },
-          placeholder: this.props.placeholder
-        }, inputProps, {
-          value: this.state.typedValue || this.state.value,
-          onChange: this.handleInputChange,
-          onFocus: this.handleInputFocus,
-          onBlur: this.handleInputBlur,
-          onKeyDown: this.handleInputKeyDown,
-          onKeyUp: this.handleInputKeyUp,
-          onClick: !inputProps.disabled ? this.handleInputClick : undefined
-        })),
-        this.state.showOverlay && this.renderOverlay()
-      );
-    }
-  }]);
-
-  return DayPickerInput;
-}(_react2.default.Component);
-
-DayPickerInput.defaultProps = {
-  dayPickerProps: {},
-  value: '',
-  placeholder: 'YYYY-M-D',
-  format: 'L',
-  formatDate: defaultFormat,
-  parseDate: defaultParse,
-  showOverlay: false,
-  hideOnDayClick: true,
-  clickUnselectsDay: false,
-  keepFocus: true,
-  component: 'input',
-  inputProps: {},
-  overlayComponent: OverlayComponent,
-  classNames: {
-    container: 'DayPickerInput',
-    overlayWrapper: 'DayPickerInput-OverlayWrapper',
-    overlay: 'DayPickerInput-Overlay'
-  }
-};
-exports.default = DayPickerInput;
-DayPickerInput.propTypes = 'development' !== "production" ? {
-  value: _propTypes2.default.oneOfType([_propTypes2.default.string, _propTypes2.default.instanceOf(Date)]),
-  inputProps: _propTypes2.default.object,
-  placeholder: _propTypes2.default.string,
-
-  format: _propTypes2.default.oneOfType([_propTypes2.default.string, _propTypes2.default.arrayOf(_propTypes2.default.string)]),
-
-  formatDate: _propTypes2.default.func,
-  parseDate: _propTypes2.default.func,
-
-  showOverlay: _propTypes2.default.bool,
-  dayPickerProps: _propTypes2.default.object,
-  hideOnDayClick: _propTypes2.default.bool,
-  clickUnselectsDay: _propTypes2.default.bool,
-  keepFocus: _propTypes2.default.bool,
-  component: _propTypes2.default.any,
-  overlayComponent: _propTypes2.default.any,
-
-  classNames: _propTypes2.default.shape({
-    container: _propTypes2.default.string,
-    overlayWrapper: _propTypes2.default.string,
-    overlay: _propTypes2.default.string.isRequired
-  }),
-
-  onDayChange: _propTypes2.default.func,
-  onDayPickerHide: _propTypes2.default.func,
-  onChange: _propTypes2.default.func,
-  onClick: _propTypes2.default.func,
-  onFocus: _propTypes2.default.func,
-  onBlur: _propTypes2.default.func,
-  onKeyUp: _propTypes2.default.func
-} : {};
-//# sourceMappingURL=DayPickerInput.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/Helpers.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
-
-exports.cancelEvent = cancelEvent;
-exports.getFirstDayOfMonth = getFirstDayOfMonth;
-exports.getDaysInMonth = getDaysInMonth;
-exports.getModifiersFromProps = getModifiersFromProps;
-exports.getFirstDayOfWeekFromProps = getFirstDayOfWeekFromProps;
-exports.isRangeOfDates = isRangeOfDates;
-exports.getMonthsDiff = getMonthsDiff;
-exports.getWeekArray = getWeekArray;
-exports.startOfMonth = startOfMonth;
-exports.getDayNodes = getDayNodes;
-exports.nodeListToArray = nodeListToArray;
-exports.hasOwnProp = hasOwnProp;
-
-var _DateUtils = require('./DateUtils');
-
-var _LocaleUtils = require('./LocaleUtils');
-
-var _classNames = require('./classNames');
-
-var _classNames2 = _interopRequireDefault(_classNames);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function cancelEvent(e) {
-  e.preventDefault();
-  e.stopPropagation();
-}
-
-function getFirstDayOfMonth(d) {
-  return new Date(d.getFullYear(), d.getMonth(), 1, 12);
-}
-
-function getDaysInMonth(d) {
-  var resultDate = getFirstDayOfMonth(d);
-
-  resultDate.setMonth(resultDate.getMonth() + 1);
-  resultDate.setDate(resultDate.getDate() - 1);
-
-  return resultDate.getDate();
-}
-
-function getModifiersFromProps(props) {
-  var modifiers = _extends({}, props.modifiers);
-  if (props.selectedDays) {
-    modifiers[props.classNames.selected] = props.selectedDays;
-  }
-  if (props.disabledDays) {
-    modifiers[props.classNames.disabled] = props.disabledDays;
-  }
-  return modifiers;
-}
-
-function getFirstDayOfWeekFromProps(props) {
-  var firstDayOfWeek = props.firstDayOfWeek,
-      _props$locale = props.locale,
-      locale = _props$locale === undefined ? 'en' : _props$locale,
-      _props$localeUtils = props.localeUtils,
-      localeUtils = _props$localeUtils === undefined ? {} : _props$localeUtils;
-
-  if (!isNaN(firstDayOfWeek)) {
-    return firstDayOfWeek;
-  }
-  if (localeUtils.getFirstDayOfWeek) {
-    return localeUtils.getFirstDayOfWeek(locale);
-  }
-  return 0;
-}
-
-function isRangeOfDates(value) {
-  return !!(value && value.from && value.to);
-}
-
-function getMonthsDiff(d1, d2) {
-  return d2.getMonth() - d1.getMonth() + 12 * (d2.getFullYear() - d1.getFullYear());
-}
-
-function getWeekArray(d) {
-  var firstDayOfWeek = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : (0, _LocaleUtils.getFirstDayOfWeek)();
-  var fixedWeeks = arguments[2];
-
-  var daysInMonth = getDaysInMonth(d);
-  var dayArray = [];
-
-  var week = [];
-  var weekArray = [];
-
-  for (var i = 1; i <= daysInMonth; i += 1) {
-    dayArray.push(new Date(d.getFullYear(), d.getMonth(), i, 12));
-  }
-
-  dayArray.forEach(function (day) {
-    if (week.length > 0 && day.getDay() === firstDayOfWeek) {
-      weekArray.push(week);
-      week = [];
-    }
-    week.push(day);
-    if (dayArray.indexOf(day) === dayArray.length - 1) {
-      weekArray.push(week);
-    }
-  });
-
-  // unshift days to start the first week
-  var firstWeek = weekArray[0];
-  for (var _i = 7 - firstWeek.length; _i > 0; _i -= 1) {
-    var outsideDate = (0, _DateUtils.clone)(firstWeek[0]);
-    outsideDate.setDate(firstWeek[0].getDate() - 1);
-    firstWeek.unshift(outsideDate);
-  }
-
-  // push days until the end of the last week
-  var lastWeek = weekArray[weekArray.length - 1];
-  for (var _i2 = lastWeek.length; _i2 < 7; _i2 += 1) {
-    var _outsideDate = (0, _DateUtils.clone)(lastWeek[lastWeek.length - 1]);
-    _outsideDate.setDate(lastWeek[lastWeek.length - 1].getDate() + 1);
-    lastWeek.push(_outsideDate);
-  }
-
-  // add extra weeks to reach 6 weeks
-  if (fixedWeeks && weekArray.length < 6) {
-    var lastExtraWeek = void 0;
-
-    for (var _i3 = weekArray.length; _i3 < 6; _i3 += 1) {
-      lastExtraWeek = weekArray[weekArray.length - 1];
-      var lastDay = lastExtraWeek[lastExtraWeek.length - 1];
-      var extraWeek = [];
-
-      for (var j = 0; j < 7; j += 1) {
-        var _outsideDate2 = (0, _DateUtils.clone)(lastDay);
-        _outsideDate2.setDate(lastDay.getDate() + j + 1);
-        extraWeek.push(_outsideDate2);
-      }
-
-      weekArray.push(extraWeek);
-    }
-  }
-
-  return weekArray;
-}
-
-function startOfMonth(d) {
-  var newDate = (0, _DateUtils.clone)(d);
-  newDate.setDate(1);
-  newDate.setHours(12, 0, 0, 0); // always set noon to avoid time zone issues
-  return newDate;
-}
-
-function getDayNodes(node, classNames) {
-  var outsideClassName = void 0;
-  if (classNames === _classNames2.default) {
-    // When using CSS modules prefix the modifier as required by the BEM syntax
-    outsideClassName = classNames.day + '--' + classNames.outside;
-  } else {
-    outsideClassName = '' + classNames.outside;
-  }
-  var dayQuery = classNames.day.replace(/ /g, '.');
-  var outsideDayQuery = outsideClassName.replace(/ /g, '.');
-  var selector = '.' + dayQuery + ':not(.' + outsideDayQuery + ')';
-  return node.querySelectorAll(selector);
-}
-
-function nodeListToArray(nodeList) {
-  return Array.prototype.slice.call(nodeList, 0);
-}
-
-function hasOwnProp(obj, prop) {
-  return Object.prototype.hasOwnProperty.call(obj, prop);
-}
-//# sourceMappingURL=Helpers.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/LocaleUtils.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.formatDay = formatDay;
-exports.formatMonthTitle = formatMonthTitle;
-exports.formatWeekdayShort = formatWeekdayShort;
-exports.formatWeekdayLong = formatWeekdayLong;
-exports.getFirstDayOfWeek = getFirstDayOfWeek;
-exports.getMonths = getMonths;
-var WEEKDAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-
-var WEEKDAYS_SHORT = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-
-var MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-function formatDay(day) {
-  return day.toDateString();
-}
-
-function formatMonthTitle(d) {
-  return MONTHS[d.getMonth()] + ' ' + d.getFullYear();
-}
-
-function formatWeekdayShort(i) {
-  return WEEKDAYS_SHORT[i];
-}
-
-function formatWeekdayLong(i) {
-  return WEEKDAYS_LONG[i];
-}
-
-function getFirstDayOfWeek() {
-  return 0;
-}
-
-function getMonths() {
-  return MONTHS;
-}
-
-exports.default = {
-  formatDay: formatDay,
-  formatMonthTitle: formatMonthTitle,
-  formatWeekdayShort: formatWeekdayShort,
-  formatWeekdayLong: formatWeekdayLong,
-  getFirstDayOfWeek: getFirstDayOfWeek,
-  getMonths: getMonths
-};
-//# sourceMappingURL=LocaleUtils.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/ModifiersUtils.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-exports.dayMatchesModifier = dayMatchesModifier;
-exports.getModifiersForDay = getModifiersForDay;
-
-var _DateUtils = require('./DateUtils');
-
-var _Helpers = require('./Helpers');
-
-/**
- * Return `true` if a date matches the specified modifier.
- *
- * @export
- * @param {Date} day
- * @param {Any} modifier
- * @return {Boolean}
- */
-function dayMatchesModifier(day, modifier) {
-  if (!modifier) {
-    return false;
-  }
-  var arr = Array.isArray(modifier) ? modifier : [modifier];
-  return arr.some(function (mod) {
-    if (!mod) {
-      return false;
-    }
-    if (mod instanceof Date) {
-      return (0, _DateUtils.isSameDay)(day, mod);
-    }
-    if ((0, _Helpers.isRangeOfDates)(mod)) {
-      return (0, _DateUtils.isDayInRange)(day, mod);
-    }
-    if (mod.after && mod.before && (0, _DateUtils.isDayAfter)(mod.before, mod.after)) {
-      return (0, _DateUtils.isDayAfter)(day, mod.after) && (0, _DateUtils.isDayBefore)(day, mod.before);
-    }
-    if (mod.after && mod.before && ((0, _DateUtils.isDayAfter)(mod.after, mod.before) || (0, _DateUtils.isSameDay)(mod.after, mod.before))) {
-      return (0, _DateUtils.isDayAfter)(day, mod.after) || (0, _DateUtils.isDayBefore)(day, mod.before);
-    }
-    if (mod.after) {
-      return (0, _DateUtils.isDayAfter)(day, mod.after);
-    }
-    if (mod.before) {
-      return (0, _DateUtils.isDayBefore)(day, mod.before);
-    }
-    if (mod.daysOfWeek) {
-      return mod.daysOfWeek.some(function (dayOfWeek) {
-        return day.getDay() === dayOfWeek;
-      });
-    }
-    if (typeof mod === 'function') {
-      return mod(day);
-    }
-    return false;
-  });
-}
-
-/**
- * Return the modifiers matching the given day for the given
- * object of modifiers.
- *
- * @export
- * @param {Date} day
- * @param {Object} [modifiersObj={}]
- * @return {Array}
- */
-function getModifiersForDay(day) {
-  var modifiersObj = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : {};
-
-  return Object.keys(modifiersObj).reduce(function (modifiers, modifierName) {
-    var value = modifiersObj[modifierName];
-    if (dayMatchesModifier(day, value)) {
-      modifiers.push(modifierName);
-    }
-    return modifiers;
-  }, []);
-}
-
-exports.default = { dayMatchesModifier: dayMatchesModifier, getModifiersForDay: getModifiersForDay };
-//# sourceMappingURL=ModifiersUtils.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/Month.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _react = require('react');
-
-var _react2 = _interopRequireDefault(_react);
-
-var _propTypes = require('prop-types');
-
-var _propTypes2 = _interopRequireDefault(_propTypes);
-
-var _Weekdays = require('./Weekdays');
-
-var _Weekdays2 = _interopRequireDefault(_Weekdays);
-
-var _Day = require('./Day');
-
-var _Day2 = _interopRequireDefault(_Day);
-
-var _keys = require('./keys');
-
-var _ModifiersUtils = require('./ModifiersUtils');
-
-var ModifiersUtils = _interopRequireWildcard(_ModifiersUtils);
-
-var _Helpers = require('./Helpers');
-
-var Helpers = _interopRequireWildcard(_Helpers);
-
-var _DateUtils = require('./DateUtils');
-
-var DateUtils = _interopRequireWildcard(_DateUtils);
-
-function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var Month = function (_Component) {
-  _inherits(Month, _Component);
-
-  function Month() {
-    var _ref;
-
-    var _temp, _this, _ret;
-
-    _classCallCheck(this, Month);
-
-    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-      args[_key] = arguments[_key];
-    }
-
-    return _ret = (_temp = (_this = _possibleConstructorReturn(this, (_ref = Month.__proto__ || Object.getPrototypeOf(Month)).call.apply(_ref, [this].concat(args))), _this), _this.renderDay = function (day) {
-      var monthNumber = _this.props.month.getMonth();
-      var propModifiers = Helpers.getModifiersFromProps(_this.props);
-      var dayModifiers = ModifiersUtils.getModifiersForDay(day, propModifiers);
-      if (DateUtils.isSameDay(day, new Date()) && !Object.prototype.hasOwnProperty.call(propModifiers, _this.props.classNames.today)) {
-        dayModifiers.push(_this.props.classNames.today);
-      }
-      if (day.getMonth() !== monthNumber) {
-        dayModifiers.push(_this.props.classNames.outside);
-      }
-
-      var isOutside = day.getMonth() !== monthNumber;
-      var tabIndex = -1;
-      // Focus on the first day of the month
-      if (_this.props.onDayClick && !isOutside && day.getDate() === 1) {
-        tabIndex = _this.props.tabIndex; // eslint-disable-line prefer-destructuring
-      }
-      var key = '' + day.getFullYear() + day.getMonth() + day.getDate();
-      var modifiers = {};
-      dayModifiers.forEach(function (modifier) {
-        modifiers[modifier] = true;
-      });
-
-      return _react2.default.createElement(
-        _Day2.default,
-        {
-          key: '' + (isOutside ? 'outside-' : '') + key,
-          classNames: _this.props.classNames,
-          day: day,
-          modifiers: modifiers,
-          modifiersStyles: _this.props.modifiersStyles,
-          empty: isOutside && !_this.props.showOutsideDays && !_this.props.fixedWeeks,
-          tabIndex: tabIndex,
-          ariaLabel: _this.props.localeUtils.formatDay(day, _this.props.locale),
-          ariaDisabled: isOutside || dayModifiers.indexOf('disabled') > -1,
-          ariaSelected: dayModifiers.indexOf('selected') > -1,
-          onClick: _this.props.onDayClick,
-          onFocus: _this.props.onDayFocus,
-          onKeyDown: _this.props.onDayKeyDown,
-          onMouseEnter: _this.props.onDayMouseEnter,
-          onMouseLeave: _this.props.onDayMouseLeave,
-          onMouseDown: _this.props.onDayMouseDown,
-          onMouseUp: _this.props.onDayMouseUp,
-          onTouchEnd: _this.props.onDayTouchEnd,
-          onTouchStart: _this.props.onDayTouchStart
-        },
-        _this.props.renderDay(day, modifiers)
-      );
-    }, _temp), _possibleConstructorReturn(_this, _ret);
-  }
-
-  _createClass(Month, [{
-    key: 'render',
-    value: function render() {
-      var _this2 = this;
-
-      var _props = this.props,
-          classNames = _props.classNames,
-          month = _props.month,
-          months = _props.months,
-          fixedWeeks = _props.fixedWeeks,
-          captionElement = _props.captionElement,
-          weekdayElement = _props.weekdayElement,
-          locale = _props.locale,
-          localeUtils = _props.localeUtils,
-          weekdaysLong = _props.weekdaysLong,
-          weekdaysShort = _props.weekdaysShort,
-          firstDayOfWeek = _props.firstDayOfWeek,
-          onCaptionClick = _props.onCaptionClick,
-          showWeekNumbers = _props.showWeekNumbers,
-          showWeekDays = _props.showWeekDays,
-          onWeekClick = _props.onWeekClick;
-
-
-      var captionProps = {
-        date: month,
-        classNames: classNames,
-        months: months,
-        localeUtils: localeUtils,
-        locale: locale,
-        onClick: onCaptionClick ? function (e) {
-          return onCaptionClick(month, e);
-        } : undefined
-      };
-      var caption = _react2.default.isValidElement(captionElement) ? _react2.default.cloneElement(captionElement, captionProps) : _react2.default.createElement(captionElement, captionProps);
-
-      var weeks = Helpers.getWeekArray(month, firstDayOfWeek, fixedWeeks);
-      return _react2.default.createElement(
-        'div',
-        { className: classNames.month, role: 'grid' },
-        caption,
-        showWeekDays && _react2.default.createElement(_Weekdays2.default, {
-          classNames: classNames,
-          weekdaysShort: weekdaysShort,
-          weekdaysLong: weekdaysLong,
-          firstDayOfWeek: firstDayOfWeek,
-          showWeekNumbers: showWeekNumbers,
-          locale: locale,
-          localeUtils: localeUtils,
-          weekdayElement: weekdayElement
-        }),
-        _react2.default.createElement(
-          'div',
-          { className: classNames.body, role: 'rowgroup' },
-          weeks.map(function (week) {
-            var weekNumber = void 0;
-            if (showWeekNumbers) {
-              weekNumber = DateUtils.getWeekNumber(week[6]);
-            }
-            return _react2.default.createElement(
-              'div',
-              {
-                key: week[0].getTime(),
-                className: classNames.week,
-                role: 'row'
-              },
-              showWeekNumbers && _react2.default.createElement(
-                'div',
-                {
-                  className: classNames.weekNumber,
-                  tabIndex: 0,
-                  role: 'gridcell',
-                  onClick: onWeekClick ? function (e) {
-                    return onWeekClick(weekNumber, week, e);
-                  } : undefined,
-                  onKeyUp: onWeekClick ? function (e) {
-                    return e.keyCode === _keys.ENTER && onWeekClick(weekNumber, week, e);
-                  } : undefined
-                },
-                _this2.props.renderWeek(weekNumber, week, month)
-              ),
-              week.map(_this2.renderDay)
-            );
-          })
-        )
-      );
-    }
-  }]);
-
-  return Month;
-}(_react.Component);
-
-exports.default = Month;
-Month.propTypes = 'development' !== "production" ? {
-  classNames: _propTypes2.default.shape({
-    body: _propTypes2.default.string.isRequired,
-    month: _propTypes2.default.string.isRequired,
-    outside: _propTypes2.default.string.isRequired,
-    today: _propTypes2.default.string.isRequired,
-    week: _propTypes2.default.string.isRequired
-  }).isRequired,
-  tabIndex: _propTypes2.default.number,
-
-  month: _propTypes2.default.instanceOf(Date).isRequired,
-  months: _propTypes2.default.arrayOf(_propTypes2.default.string),
-
-  modifiersStyles: _propTypes2.default.object,
-
-  showWeekDays: _propTypes2.default.bool,
-  showOutsideDays: _propTypes2.default.bool,
-
-  renderDay: _propTypes2.default.func.isRequired,
-  renderWeek: _propTypes2.default.func.isRequired,
-
-  captionElement: _propTypes2.default.oneOfType([_propTypes2.default.element, _propTypes2.default.func, _propTypes2.default.instanceOf(_react2.default.Component)]).isRequired,
-  weekdayElement: _propTypes2.default.oneOfType([_propTypes2.default.element, _propTypes2.default.func, _propTypes2.default.instanceOf(_react2.default.Component)]),
-
-  fixedWeeks: _propTypes2.default.bool,
-  showWeekNumbers: _propTypes2.default.bool,
-
-  locale: _propTypes2.default.string.isRequired,
-  localeUtils: _propTypes2.default.object.isRequired,
-  weekdaysLong: _propTypes2.default.arrayOf(_propTypes2.default.string),
-  weekdaysShort: _propTypes2.default.arrayOf(_propTypes2.default.string),
-  firstDayOfWeek: _propTypes2.default.number.isRequired,
-
-  onCaptionClick: _propTypes2.default.func,
-  onDayClick: _propTypes2.default.func,
-  onDayFocus: _propTypes2.default.func,
-  onDayKeyDown: _propTypes2.default.func,
-  onDayMouseEnter: _propTypes2.default.func,
-  onDayMouseLeave: _propTypes2.default.func,
-  onDayMouseDown: _propTypes2.default.func,
-  onDayMouseUp: _propTypes2.default.func,
-  onDayTouchEnd: _propTypes2.default.func,
-  onDayTouchStart: _propTypes2.default.func,
-  onWeekClick: _propTypes2.default.func
-} : {};
-//# sourceMappingURL=Month.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/Navbar.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _react = require('react');
-
-var _react2 = _interopRequireDefault(_react);
-
-var _propTypes = require('prop-types');
-
-var _propTypes2 = _interopRequireDefault(_propTypes);
-
-var _classNames = require('./classNames');
-
-var _classNames2 = _interopRequireDefault(_classNames);
-
-var _keys = require('./keys');
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var Navbar = function (_Component) {
-  _inherits(Navbar, _Component);
-
-  function Navbar() {
-    var _ref;
-
-    var _temp, _this, _ret;
-
-    _classCallCheck(this, Navbar);
-
-    for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-      args[_key] = arguments[_key];
-    }
-
-    return _ret = (_temp = (_this = _possibleConstructorReturn(this, (_ref = Navbar.__proto__ || Object.getPrototypeOf(Navbar)).call.apply(_ref, [this].concat(args))), _this), _this.handleNextClick = function () {
-      if (_this.props.onNextClick) {
-        _this.props.onNextClick();
-      }
-    }, _this.handlePreviousClick = function () {
-      if (_this.props.onPreviousClick) {
-        _this.props.onPreviousClick();
-      }
-    }, _this.handleNextKeyDown = function (e) {
-      if (e.keyCode !== _keys.ENTER && e.keyCode !== _keys.SPACE) {
-        return;
-      }
-      e.preventDefault();
-      _this.handleNextClick();
-    }, _this.handlePreviousKeyDown = function (e) {
-      if (e.keyCode !== _keys.ENTER && e.keyCode !== _keys.SPACE) {
-        return;
-      }
-      e.preventDefault();
-      _this.handlePreviousClick();
-    }, _temp), _possibleConstructorReturn(_this, _ret);
-  }
-
-  _createClass(Navbar, [{
-    key: 'shouldComponentUpdate',
-    value: function shouldComponentUpdate(nextProps) {
-      return nextProps.labels !== this.props.labels || nextProps.dir !== this.props.dir || this.props.showPreviousButton !== nextProps.showPreviousButton || this.props.showNextButton !== nextProps.showNextButton;
-    }
-  }, {
-    key: 'render',
-    value: function render() {
-      var _props = this.props,
-          classNames = _props.classNames,
-          className = _props.className,
-          showPreviousButton = _props.showPreviousButton,
-          showNextButton = _props.showNextButton,
-          labels = _props.labels,
-          dir = _props.dir;
-
-
-      var previousClickHandler = void 0;
-      var nextClickHandler = void 0;
-      var previousKeyDownHandler = void 0;
-      var nextKeyDownHandler = void 0;
-      var shouldShowPrevious = void 0;
-      var shouldShowNext = void 0;
-
-      if (dir === 'rtl') {
-        previousClickHandler = this.handleNextClick;
-        nextClickHandler = this.handlePreviousClick;
-        previousKeyDownHandler = this.handleNextKeyDown;
-        nextKeyDownHandler = this.handlePreviousKeyDown;
-        shouldShowNext = showPreviousButton;
-        shouldShowPrevious = showNextButton;
-      } else {
-        previousClickHandler = this.handlePreviousClick;
-        nextClickHandler = this.handleNextClick;
-        previousKeyDownHandler = this.handlePreviousKeyDown;
-        nextKeyDownHandler = this.handleNextKeyDown;
-        shouldShowNext = showNextButton;
-        shouldShowPrevious = showPreviousButton;
-      }
-
-      var previousClassName = shouldShowPrevious ? classNames.navButtonPrev : classNames.navButtonPrev + ' ' + classNames.navButtonInteractionDisabled;
-
-      var nextClassName = shouldShowNext ? classNames.navButtonNext : classNames.navButtonNext + ' ' + classNames.navButtonInteractionDisabled;
-
-      var previousButton = _react2.default.createElement('span', {
-        tabIndex: '0',
-        role: 'button',
-        'aria-label': labels.previousMonth,
-        key: 'previous',
-        className: previousClassName,
-        onKeyDown: shouldShowPrevious ? previousKeyDownHandler : undefined,
-        onClick: shouldShowPrevious ? previousClickHandler : undefined
-      });
-
-      var nextButton = _react2.default.createElement('span', {
-        tabIndex: '0',
-        role: 'button',
-        'aria-label': labels.nextMonth,
-        key: 'right',
-        className: nextClassName,
-        onKeyDown: shouldShowNext ? nextKeyDownHandler : undefined,
-        onClick: shouldShowNext ? nextClickHandler : undefined
-      });
-
-      return _react2.default.createElement(
-        'div',
-        { className: className || classNames.navBar },
-        dir === 'rtl' ? [nextButton, previousButton] : [previousButton, nextButton]
-      );
-    }
-  }]);
-
-  return Navbar;
-}(_react.Component);
-
-Navbar.defaultProps = {
-  classNames: _classNames2.default,
-  dir: 'ltr',
-  labels: {
-    previousMonth: 'Previous Month',
-    nextMonth: 'Next Month'
-  },
-  showPreviousButton: true,
-  showNextButton: true
-};
-exports.default = Navbar;
-Navbar.propTypes = 'development' !== "production" ? {
-  classNames: _propTypes2.default.shape({
-    navBar: _propTypes2.default.string.isRequired,
-    navButtonPrev: _propTypes2.default.string.isRequired,
-    navButtonNext: _propTypes2.default.string.isRequired
-  }),
-  className: _propTypes2.default.string,
-  showPreviousButton: _propTypes2.default.bool,
-  showNextButton: _propTypes2.default.bool,
-  onPreviousClick: _propTypes2.default.func,
-  onNextClick: _propTypes2.default.func,
-  dir: _propTypes2.default.string,
-  labels: _propTypes2.default.shape({
-    previousMonth: _propTypes2.default.string.isRequired,
-    nextMonth: _propTypes2.default.string.isRequired
-  })
-} : {};
-//# sourceMappingURL=Navbar.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/Weekday.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _react = require('react');
-
-var _react2 = _interopRequireDefault(_react);
-
-var _propTypes = require('prop-types');
-
-var _propTypes2 = _interopRequireDefault(_propTypes);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var Weekday = function (_Component) {
-  _inherits(Weekday, _Component);
-
-  function Weekday() {
-    _classCallCheck(this, Weekday);
-
-    return _possibleConstructorReturn(this, (Weekday.__proto__ || Object.getPrototypeOf(Weekday)).apply(this, arguments));
-  }
-
-  _createClass(Weekday, [{
-    key: 'shouldComponentUpdate',
-    value: function shouldComponentUpdate(nextProps) {
-      return this.props !== nextProps;
-    }
-  }, {
-    key: 'render',
-    value: function render() {
-      var _props = this.props,
-          weekday = _props.weekday,
-          className = _props.className,
-          weekdaysLong = _props.weekdaysLong,
-          weekdaysShort = _props.weekdaysShort,
-          localeUtils = _props.localeUtils,
-          locale = _props.locale;
-
-      var title = void 0;
-      if (weekdaysLong) {
-        title = weekdaysLong[weekday];
-      } else {
-        title = localeUtils.formatWeekdayLong(weekday, locale);
-      }
-      var content = void 0;
-      if (weekdaysShort) {
-        content = weekdaysShort[weekday];
-      } else {
-        content = localeUtils.formatWeekdayShort(weekday, locale);
-      }
-
-      return _react2.default.createElement(
-        'div',
-        { className: className, role: 'columnheader' },
-        _react2.default.createElement(
-          'abbr',
-          { title: title },
-          content
-        )
-      );
-    }
-  }]);
-
-  return Weekday;
-}(_react.Component);
-
-exports.default = Weekday;
-Weekday.propTypes = 'development' !== "production" ? {
-  weekday: _propTypes2.default.number,
-  className: _propTypes2.default.string,
-  locale: _propTypes2.default.string,
-  localeUtils: _propTypes2.default.object,
-
-  weekdaysLong: _propTypes2.default.arrayOf(_propTypes2.default.string),
-  weekdaysShort: _propTypes2.default.arrayOf(_propTypes2.default.string)
-} : {};
-//# sourceMappingURL=Weekday.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/Weekdays.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
-
-var _react = require('react');
-
-var _react2 = _interopRequireDefault(_react);
-
-var _propTypes = require('prop-types');
-
-var _propTypes2 = _interopRequireDefault(_propTypes);
-
-function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
-
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-function _possibleConstructorReturn(self, call) { if (!self) { throw new ReferenceError("this hasn't been initialised - super() hasn't been called"); } return call && (typeof call === "object" || typeof call === "function") ? call : self; }
-
-function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
-
-var Weekdays = function (_Component) {
-  _inherits(Weekdays, _Component);
-
-  function Weekdays() {
-    _classCallCheck(this, Weekdays);
-
-    return _possibleConstructorReturn(this, (Weekdays.__proto__ || Object.getPrototypeOf(Weekdays)).apply(this, arguments));
-  }
-
-  _createClass(Weekdays, [{
-    key: 'shouldComponentUpdate',
-    value: function shouldComponentUpdate(nextProps) {
-      return this.props !== nextProps;
-    }
-  }, {
-    key: 'render',
-    value: function render() {
-      var _props = this.props,
-          classNames = _props.classNames,
-          firstDayOfWeek = _props.firstDayOfWeek,
-          showWeekNumbers = _props.showWeekNumbers,
-          weekdaysLong = _props.weekdaysLong,
-          weekdaysShort = _props.weekdaysShort,
-          locale = _props.locale,
-          localeUtils = _props.localeUtils,
-          weekdayElement = _props.weekdayElement;
-
-      var days = [];
-      for (var i = 0; i < 7; i += 1) {
-        var weekday = (i + firstDayOfWeek) % 7;
-        var elementProps = {
-          key: i,
-          className: classNames.weekday,
-          weekday: weekday,
-          weekdaysLong: weekdaysLong,
-          weekdaysShort: weekdaysShort,
-          localeUtils: localeUtils,
-          locale: locale
-        };
-        var element = _react2.default.isValidElement(weekdayElement) ? _react2.default.cloneElement(weekdayElement, elementProps) : _react2.default.createElement(weekdayElement, elementProps);
-        days.push(element);
-      }
-
-      return _react2.default.createElement(
-        'div',
-        { className: classNames.weekdays, role: 'rowgroup' },
-        _react2.default.createElement(
-          'div',
-          { className: classNames.weekdaysRow, role: 'row' },
-          showWeekNumbers && _react2.default.createElement('div', { className: classNames.weekday }),
-          days
-        )
-      );
-    }
-  }]);
-
-  return Weekdays;
-}(_react.Component);
-
-exports.default = Weekdays;
-Weekdays.propTypes = 'development' !== "production" ? {
-  classNames: _propTypes2.default.shape({
-    weekday: _propTypes2.default.string.isRequired,
-    weekdays: _propTypes2.default.string.isRequired,
-    weekdaysRow: _propTypes2.default.string.isRequired
-  }).isRequired,
-
-  firstDayOfWeek: _propTypes2.default.number.isRequired,
-  weekdaysLong: _propTypes2.default.arrayOf(_propTypes2.default.string),
-  weekdaysShort: _propTypes2.default.arrayOf(_propTypes2.default.string),
-  showWeekNumbers: _propTypes2.default.bool,
-  locale: _propTypes2.default.string.isRequired,
-  localeUtils: _propTypes2.default.object.isRequired,
-  weekdayElement: _propTypes2.default.oneOfType([_propTypes2.default.element, _propTypes2.default.func, _propTypes2.default.instanceOf(_react2.default.Component)])
-} : {};
-//# sourceMappingURL=Weekdays.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/classNames.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    'use strict';
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-// Proxy object to map classnames when css modules are not used
-
-exports.default = {
-  container: 'DayPicker',
-  wrapper: 'DayPicker-wrapper',
-  interactionDisabled: 'DayPicker--interactionDisabled',
-  months: 'DayPicker-Months',
-  month: 'DayPicker-Month',
-
-  navBar: 'DayPicker-NavBar',
-  navButtonPrev: 'DayPicker-NavButton DayPicker-NavButton--prev',
-  navButtonNext: 'DayPicker-NavButton DayPicker-NavButton--next',
-  navButtonInteractionDisabled: 'DayPicker-NavButton--interactionDisabled',
-
-  caption: 'DayPicker-Caption',
-  weekdays: 'DayPicker-Weekdays',
-  weekdaysRow: 'DayPicker-WeekdaysRow',
-  weekday: 'DayPicker-Weekday',
-  body: 'DayPicker-Body',
-  week: 'DayPicker-Week',
-  weekNumber: 'DayPicker-WeekNumber',
-  day: 'DayPicker-Day',
-  footer: 'DayPicker-Footer',
-  todayButton: 'DayPicker-TodayButton',
-
-  // default modifiers
-  today: 'today',
-  selected: 'selected',
-  disabled: 'disabled',
-  outside: 'outside'
-};
-//# sourceMappingURL=classNames.js.map
-  })();
-});
-
-require.register("react-day-picker/lib/src/keys.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "react-day-picker");
-  (function() {
-    "use strict";
-
-Object.defineProperty(exports, "__esModule", {
-  value: true
-});
-var LEFT = exports.LEFT = 37;
-var UP = exports.UP = 38;
-var RIGHT = exports.RIGHT = 39;
-var DOWN = exports.DOWN = 40;
-var ENTER = exports.ENTER = 13;
-var SPACE = exports.SPACE = 32;
-var ESC = exports.ESC = 27;
-var TAB = exports.TAB = 9;
-//# sourceMappingURL=keys.js.map
-  })();
-});
-
 require.register("react-dom/cjs/react-dom.development.js", function(exports, require, module) {
   require = __makeRelativeRequire(require, {}, "react-dom");
   (function() {
@@ -69868,6 +68118,1031 @@ function createChainableTypeChecker(validate) {
   })();
 });
 
+require.register("react-slider/react-slider.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "react-slider");
+  (function() {
+    (function (root, factory) {
+  if (typeof define === 'function' && define.amd) {
+    define(['react','prop-types','create-react-class'], factory);
+  } else if (typeof exports === 'object') {
+    module.exports = factory(require('react'),require('prop-types'),require('create-react-class'));
+  } else {
+    root.ReactSlider = factory(root.React,root.PropTypes,root.createReactClass);
+  }
+}(this, function (React, PropTypes, createReactClass) {
+
+  /**
+   * To prevent text selection while dragging.
+   * http://stackoverflow.com/questions/5429827/how-can-i-prevent-text-element-selection-with-cursor-drag
+   */
+  function pauseEvent(e) {
+    if (e.stopPropagation) e.stopPropagation();
+    if (e.preventDefault) e.preventDefault();
+    return false;
+  }
+
+  function stopPropagation(e) {
+    if (e.stopPropagation) e.stopPropagation();
+  }
+
+  /**
+   * Spreads `count` values equally between `min` and `max`.
+   */
+  function linspace(min, max, count) {
+    var range = (max - min) / (count - 1);
+    var res = [];
+    for (var i = 0; i < count; i++) {
+      res.push(min + range * i);
+    }
+    return res;
+  }
+
+  function ensureArray(x) {
+    return x == null ? [] : Array.isArray(x) ? x : [x];
+  }
+
+  function undoEnsureArray(x) {
+    return x != null && x.length === 1 ? x[0] : x;
+  }
+
+  var isArray = Array.isArray || function(x) {
+    return Object.prototype.toString.call(x) === '[object Array]';
+  };
+
+  // undoEnsureArray(ensureArray(x)) === x
+
+  var ReactSlider = createReactClass({
+    displayName: 'ReactSlider',
+
+    propTypes: {
+
+      /**
+       * The minimum value of the slider.
+       */
+      min: PropTypes.number,
+
+      /**
+       * The maximum value of the slider.
+       */
+      max: PropTypes.number,
+
+      /**
+       * Value to be added or subtracted on each step the slider makes.
+       * Must be greater than zero.
+       * `max - min` should be evenly divisible by the step value.
+       */
+      step: PropTypes.number,
+
+      /**
+       * The minimal distance between any pair of handles.
+       * Must be positive, but zero means they can sit on top of each other.
+       */
+      minDistance: PropTypes.number,
+
+      /**
+       * Determines the initial positions of the handles and the number of handles if the component has no children.
+       *
+       * If a number is passed a slider with one handle will be rendered.
+       * If an array is passed each value will determine the position of one handle.
+       * The values in the array must be sorted.
+       * If the component has children, the length of the array must match the number of children.
+       */
+      defaultValue: PropTypes.oneOfType([
+        PropTypes.number,
+        PropTypes.arrayOf(PropTypes.number)
+      ]),
+
+      /**
+       * Like `defaultValue` but for [controlled components](http://facebook.github.io/react/docs/forms.html#controlled-components).
+       */
+      value: PropTypes.oneOfType([
+        PropTypes.number,
+        PropTypes.arrayOf(PropTypes.number)
+      ]),
+
+      /**
+       * Determines whether the slider moves horizontally (from left to right) or vertically (from top to bottom).
+       */
+      orientation: PropTypes.oneOf(['horizontal', 'vertical']),
+
+      /**
+       * The css class set on the slider node.
+       */
+      className: PropTypes.string,
+
+      /**
+       * The css class set on each handle node.
+       *
+       * In addition each handle will receive a numbered css class of the form `${handleClassName}-${i}`,
+       * e.g. `handle-0`, `handle-1`, ...
+       */
+      handleClassName: PropTypes.string,
+
+      /**
+       * The css class set on the handle that is currently being moved.
+       */
+      handleActiveClassName: PropTypes.string,
+
+      /**
+       * If `true` bars between the handles will be rendered.
+       */
+      withBars: PropTypes.bool,
+
+      /**
+       * The css class set on the bars between the handles.
+       * In addition bar fragment will receive a numbered css class of the form `${barClassName}-${i}`,
+       * e.g. `bar-0`, `bar-1`, ...
+       */
+      barClassName: PropTypes.string,
+
+      /**
+       * If `true` the active handle will push other handles
+       * within the constraints of `min`, `max`, `step` and `minDistance`.
+       */
+      pearling: PropTypes.bool,
+
+      /**
+       * If `true` the handles can't be moved.
+       */
+      disabled: PropTypes.bool,
+
+      /**
+       * Disables handle move when clicking the slider bar
+       */
+      snapDragDisabled: PropTypes.bool,
+
+      /**
+       * Inverts the slider.
+       */
+      invert: PropTypes.bool,
+
+      /**
+       * Callback called before starting to move a handle.
+       */
+      onBeforeChange: PropTypes.func,
+
+      /**
+       * Callback called on every value change.
+       */
+      onChange: PropTypes.func,
+
+      /**
+       * Callback called only after moving a handle has ended.
+       */
+      onAfterChange: PropTypes.func,
+
+      /**
+       *  Callback called when the the slider is clicked (handle or bars).
+       *  Receives the value at the clicked position as argument.
+       */
+      onSliderClick: PropTypes.func
+    },
+
+    getDefaultProps: function () {
+      return {
+        min: 0,
+        max: 100,
+        step: 1,
+        minDistance: 0,
+        defaultValue: 0,
+        orientation: 'horizontal',
+        className: 'slider',
+        handleClassName: 'handle',
+        handleActiveClassName: 'active',
+        barClassName: 'bar',
+        withBars: false,
+        pearling: false,
+        disabled: false,
+        snapDragDisabled: false,
+        invert: false
+      };
+    },
+
+    getInitialState: function () {
+      var value = this._or(ensureArray(this.props.value), ensureArray(this.props.defaultValue));
+
+      // reused throughout the component to store results of iterations over `value`
+      this.tempArray = value.slice();
+
+      // array for storing resize timeouts ids
+      this.pendingResizeTimeouts = [];
+
+      var zIndices = [];
+      for (var i = 0; i < value.length; i++) {
+        value[i] = this._trimAlignValue(value[i], this.props);
+        zIndices.push(i);
+      }
+
+      return {
+        index: -1,
+        upperBound: 0,
+        sliderLength: 0,
+        value: value,
+        zIndices: zIndices
+      };
+    },
+
+    // Keep the internal `value` consistent with an outside `value` if present.
+    // This basically allows the slider to be a controlled component.
+    componentWillReceiveProps: function (newProps) {
+      var value = this._or(ensureArray(newProps.value), this.state.value);
+
+      // ensure the array keeps the same size as `value`
+      this.tempArray = value.slice();
+
+      for (var i = 0; i < value.length; i++) {
+        this.state.value[i] = this._trimAlignValue(value[i], newProps);
+      }
+      if (this.state.value.length > value.length)
+        this.state.value.length = value.length;
+
+      // If an upperBound has not yet been determined (due to the component being hidden
+      // during the mount event, or during the last resize), then calculate it now
+      if (this.state.upperBound === 0) {
+        this._resize();
+      }
+    },
+
+    // Check if the arity of `value` or `defaultValue` matches the number of children (= number of custom handles).
+    // If no custom handles are provided, just returns `value` if present and `defaultValue` otherwise.
+    // If custom handles are present but neither `value` nor `defaultValue` are applicable the handles are spread out
+    // equally.
+    // TODO: better name? better solution?
+    _or: function (value, defaultValue) {
+      var count = React.Children.count(this.props.children);
+      switch (count) {
+        case 0:
+          return value.length > 0 ? value : defaultValue;
+        case value.length:
+          return value;
+        case defaultValue.length:
+          return defaultValue;
+        default:
+          if (value.length !== count || defaultValue.length !== count) {
+            console.warn(this.constructor.displayName + ": Number of values does not match number of children.");
+          }
+          return linspace(this.props.min, this.props.max, count);
+      }
+    },
+
+    componentDidMount: function () {
+      window.addEventListener('resize', this._handleResize);
+      this._resize();
+    },
+
+    componentWillUnmount: function () {
+      this._clearPendingResizeTimeouts();
+      window.removeEventListener('resize', this._handleResize);
+    },
+
+    getValue: function () {
+      return undoEnsureArray(this.state.value);
+    },
+
+    _resize: function () {
+      var slider = this.slider;
+      var handle = this.handle0;
+      var rect = slider.getBoundingClientRect();
+
+      var size = this._sizeKey();
+
+      var sliderMax = rect[this._posMaxKey()];
+      var sliderMin = rect[this._posMinKey()];
+
+      this.setState({
+        upperBound: slider[size] - handle[size],
+        sliderLength: Math.abs(sliderMax - sliderMin),
+        handleSize: handle[size],
+        sliderStart: this.props.invert ? sliderMax : sliderMin
+      });
+    },
+
+    _handleResize: function () {
+      // setTimeout of 0 gives element enough time to have assumed its new size if it is being resized
+      var resizeTimeout = window.setTimeout(function() {
+        // drop this timeout from pendingResizeTimeouts to reduce memory usage
+        this.pendingResizeTimeouts.shift();
+        this._resize();
+      }.bind(this), 0);
+
+      this.pendingResizeTimeouts.push(resizeTimeout);
+    },
+
+    // clear all pending timeouts to avoid error messages after unmounting
+    _clearPendingResizeTimeouts: function() {
+      do {
+        var nextTimeout = this.pendingResizeTimeouts.shift();
+
+        clearTimeout(nextTimeout);
+      } while (this.pendingResizeTimeouts.length);
+    },
+
+    // calculates the offset of a handle in pixels based on its value.
+    _calcOffset: function (value) {
+      var range = this.props.max - this.props.min;
+      if (range === 0) {
+        return 0;
+      }
+      var ratio = (value - this.props.min) / range;
+      return ratio * this.state.upperBound;
+    },
+
+    // calculates the value corresponding to a given pixel offset, i.e. the inverse of `_calcOffset`.
+    _calcValue: function (offset) {
+      var ratio = offset / this.state.upperBound;
+      return ratio * (this.props.max - this.props.min) + this.props.min;
+    },
+
+    _buildHandleStyle: function (offset, i) {
+      var style = {
+        position: 'absolute',
+        willChange: this.state.index >= 0 ? this._posMinKey() : '',
+        zIndex: this.state.zIndices.indexOf(i) + 1
+      };
+      style[this._posMinKey()] = offset + 'px';
+      return style;
+    },
+
+    _buildBarStyle: function (min, max) {
+      var obj = {
+        position: 'absolute',
+        willChange: this.state.index >= 0 ? this._posMinKey() + ',' + this._posMaxKey() : ''
+      };
+      obj[this._posMinKey()] = min;
+      obj[this._posMaxKey()] = max;
+      return obj;
+    },
+
+    _getClosestIndex: function (pixelOffset) {
+      var minDist = Number.MAX_VALUE;
+      var closestIndex = -1;
+
+      var value = this.state.value;
+      var l = value.length;
+
+      for (var i = 0; i < l; i++) {
+        var offset = this._calcOffset(value[i]);
+        var dist = Math.abs(pixelOffset - offset);
+        if (dist < minDist) {
+          minDist = dist;
+          closestIndex = i;
+        }
+      }
+
+      return closestIndex;
+    },
+
+    _calcOffsetFromPosition: function (position) {
+      var pixelOffset = position - this.state.sliderStart;
+      if (this.props.invert) pixelOffset = this.state.sliderLength - pixelOffset;
+      pixelOffset -= (this.state.handleSize / 2);
+      return pixelOffset;
+    },
+
+    // Snaps the nearest handle to the value corresponding to `position` and calls `callback` with that handle's index.
+    _forceValueFromPosition: function (position, callback) {
+      var pixelOffset = this._calcOffsetFromPosition(position);
+      var closestIndex = this._getClosestIndex(pixelOffset);
+      var nextValue = this._trimAlignValue(this._calcValue(pixelOffset));
+
+      var value = this.state.value.slice(); // Clone this.state.value since we'll modify it temporarily
+      value[closestIndex] = nextValue;
+
+      // Prevents the slider from shrinking below `props.minDistance`
+      for (var i = 0; i < value.length - 1; i += 1) {
+        if (value[i + 1] - value[i] < this.props.minDistance) return;
+      }
+
+      this.setState({value: value}, callback.bind(this, closestIndex));
+    },
+
+    _getMousePosition: function (e) {
+      return [
+        e['page' + this._axisKey()],
+        e['page' + this._orthogonalAxisKey()]
+      ];
+    },
+
+    _getTouchPosition: function (e) {
+      var touch = e.touches[0];
+      return [
+        touch['page' + this._axisKey()],
+        touch['page' + this._orthogonalAxisKey()]
+      ];
+    },
+
+    _getKeyDownEventMap: function () {
+      return {
+        'keydown': this._onKeyDown,
+        'focusout': this._onBlur
+      }
+    },
+
+    _getMouseEventMap: function () {
+      return {
+        'mousemove': this._onMouseMove,
+        'mouseup': this._onMouseUp
+      }
+    },
+
+    _getTouchEventMap: function () {
+      return {
+        'touchmove': this._onTouchMove,
+        'touchend': this._onTouchEnd
+      }
+    },
+
+    // create the `keydown` handler for the i-th handle
+    _createOnKeyDown: function (i) {
+      return function (e) {
+        if (this.props.disabled) return;
+        this._start(i);
+        this._addHandlers(this._getKeyDownEventMap());
+        pauseEvent(e);
+      }.bind(this);
+    },
+
+    // create the `mousedown` handler for the i-th handle
+    _createOnMouseDown: function (i) {
+      return function (e) {
+        if (this.props.disabled) return;
+        var position = this._getMousePosition(e);
+        this._start(i, position[0]);
+        this._addHandlers(this._getMouseEventMap());
+        pauseEvent(e);
+      }.bind(this);
+    },
+
+    // create the `touchstart` handler for the i-th handle
+    _createOnTouchStart: function (i) {
+      return function (e) {
+        if (this.props.disabled || e.touches.length > 1) return;
+        var position = this._getTouchPosition(e);
+        this.startPosition = position;
+        this.isScrolling = undefined; // don't know yet if the user is trying to scroll
+        this._start(i, position[0]);
+        this._addHandlers(this._getTouchEventMap());
+        stopPropagation(e);
+      }.bind(this);
+    },
+
+    _addHandlers: function (eventMap) {
+      for (var key in eventMap) {
+        document.addEventListener(key, eventMap[key], false);
+      }
+    },
+
+    _removeHandlers: function (eventMap) {
+      for (var key in eventMap) {
+        document.removeEventListener(key, eventMap[key], false);
+      }
+    },
+
+    _start: function (i, position) {
+      var activeEl = document.activeElement;
+      var handleRef = this['handle' + i];
+      // if activeElement is body window will lost focus in IE9
+      if (activeEl && activeEl != document.body && activeEl != handleRef) {
+        activeEl.blur && activeEl.blur();
+      }
+
+      this.hasMoved = false;
+
+      this._fireChangeEvent('onBeforeChange');
+
+      var zIndices = this.state.zIndices;
+      zIndices.splice(zIndices.indexOf(i), 1); // remove wherever the element is
+      zIndices.push(i); // add to end
+
+      this.setState(function (prevState) {
+        return {
+          startValue: this.state.value[i],
+          startPosition: position !== undefined ? position : prevState.startPosition,
+          index: i,
+          zIndices: zIndices
+        };
+      });
+    },
+
+    _onMouseUp: function () {
+      this._onEnd(this._getMouseEventMap());
+    },
+
+    _onTouchEnd: function () {
+      this._onEnd(this._getTouchEventMap());
+    },
+
+    _onBlur: function () {
+      this._onEnd(this._getKeyDownEventMap());
+    },
+
+    _onEnd: function (eventMap) {
+      this._removeHandlers(eventMap);
+      this.setState({index: -1}, this._fireChangeEvent.bind(this, 'onAfterChange'));
+    },
+
+    _onMouseMove: function (e) {
+      var position = this._getMousePosition(e);
+      var diffPosition = this._getDiffPosition(position[0]);
+      var newValue = this._getValueFromPosition(diffPosition);
+      this._move(newValue);
+    },
+
+    _onTouchMove: function (e) {
+      if (e.touches.length > 1) return;
+
+      var position = this._getTouchPosition(e);
+
+      if (typeof this.isScrolling === 'undefined') {
+        var diffMainDir = position[0] - this.startPosition[0];
+        var diffScrollDir = position[1] - this.startPosition[1];
+        this.isScrolling = Math.abs(diffScrollDir) > Math.abs(diffMainDir);
+      }
+
+      if (this.isScrolling) {
+        this.setState({index: -1});
+        return;
+      }
+
+      pauseEvent(e);
+
+      var diffPosition = this._getDiffPosition(position[0]);
+      var newValue = this._getValueFromPosition(diffPosition);
+
+      this._move(newValue);
+    },
+
+    _onKeyDown: function (e) {
+      if (e.ctrlKey || e.shiftKey || e.altKey) return;
+      switch (e.key) {
+        case "ArrowLeft":
+        case "ArrowUp":
+          e.preventDefault();
+          return this._moveDownOneStep();
+        case "ArrowRight":
+        case "ArrowDown":
+          e.preventDefault();
+          return this._moveUpOneStep();
+        case "Home":
+          return this._move(this.props.min);
+        case "End":
+          return this._move(this.props.max);
+        default:
+          return;
+      }
+    },
+
+    _moveUpOneStep: function () {
+      var oldValue = this.state.value[this.state.index];
+      var newValue = oldValue + this.props.step;
+      this._move(Math.min(newValue, this.props.max));
+    },
+
+    _moveDownOneStep: function () {
+      var oldValue = this.state.value[this.state.index];
+      var newValue = oldValue - this.props.step;
+      this._move(Math.max(newValue, this.props.min));
+    },
+
+    _getValueFromPosition: function (position) {
+      var diffValue = position / (this.state.sliderLength - this.state.handleSize) * (this.props.max - this.props.min);
+      return this._trimAlignValue(this.state.startValue + diffValue);
+    },
+
+    _getDiffPosition: function (position) {
+      var diffPosition = position - this.state.startPosition;
+      if (this.props.invert) diffPosition *= -1;
+      return diffPosition;
+    },
+
+    _move: function (newValue) {
+      this.hasMoved = true;
+
+      var props = this.props;
+      var state = this.state;
+      var index = state.index;
+
+      var value = state.value;
+      var length = value.length;
+      var oldValue = value[index];
+
+      var minDistance = props.minDistance;
+
+      // if "pearling" (= handles pushing each other) is disabled,
+      // prevent the handle from getting closer than `minDistance` to the previous or next handle.
+      if (!props.pearling) {
+        if (index > 0) {
+          var valueBefore = value[index - 1];
+          if (newValue < valueBefore + minDistance) {
+            newValue = valueBefore + minDistance;
+          }
+        }
+
+        if (index < length - 1) {
+          var valueAfter = value[index + 1];
+          if (newValue > valueAfter - minDistance) {
+            newValue = valueAfter - minDistance;
+          }
+        }
+      }
+
+      value[index] = newValue;
+
+      // if "pearling" is enabled, let the current handle push the pre- and succeeding handles.
+      if (props.pearling && length > 1) {
+        if (newValue > oldValue) {
+          this._pushSucceeding(value, minDistance, index);
+          this._trimSucceeding(length, value, minDistance, props.max);
+        }
+        else if (newValue < oldValue) {
+          this._pushPreceding(value, minDistance, index);
+          this._trimPreceding(length, value, minDistance, props.min);
+        }
+      }
+
+      // Normally you would use `shouldComponentUpdate`, but since the slider is a low-level component,
+      // the extra complexity might be worth the extra performance.
+      if (newValue !== oldValue) {
+        this.setState({value: value}, this._fireChangeEvent.bind(this, 'onChange'));
+      }
+    },
+
+    _pushSucceeding: function (value, minDistance, index) {
+      var i, padding;
+      for (i = index, padding = value[i] + minDistance;
+           value[i + 1] != null && padding > value[i + 1];
+           i++, padding = value[i] + minDistance) {
+        value[i + 1] = this._alignValue(padding);
+      }
+    },
+
+    _trimSucceeding: function (length, nextValue, minDistance, max) {
+      for (var i = 0; i < length; i++) {
+        var padding = max - i * minDistance;
+        if (nextValue[length - 1 - i] > padding) {
+          nextValue[length - 1 - i] = padding;
+        }
+      }
+    },
+
+    _pushPreceding: function (value, minDistance, index) {
+      var i, padding;
+      for (i = index, padding = value[i] - minDistance;
+           value[i - 1] != null && padding < value[i - 1];
+           i--, padding = value[i] - minDistance) {
+        value[i - 1] = this._alignValue(padding);
+      }
+    },
+
+    _trimPreceding: function (length, nextValue, minDistance, min) {
+      for (var i = 0; i < length; i++) {
+        var padding = min + i * minDistance;
+        if (nextValue[i] < padding) {
+          nextValue[i] = padding;
+        }
+      }
+    },
+
+    _axisKey: function () {
+      var orientation = this.props.orientation;
+      if (orientation === 'horizontal') return 'X';
+      if (orientation === 'vertical') return 'Y';
+    },
+
+    _orthogonalAxisKey: function () {
+      var orientation = this.props.orientation;
+      if (orientation === 'horizontal') return 'Y';
+      if (orientation === 'vertical') return 'X';
+    },
+
+    _posMinKey: function () {
+      var orientation = this.props.orientation;
+      if (orientation === 'horizontal') return this.props.invert ? 'right' : 'left';
+      if (orientation === 'vertical') return this.props.invert ? 'bottom' : 'top';
+    },
+
+    _posMaxKey: function () {
+      var orientation = this.props.orientation;
+      if (orientation === 'horizontal') return this.props.invert ? 'left' : 'right';
+      if (orientation === 'vertical') return this.props.invert ? 'top' : 'bottom';
+    },
+
+    _sizeKey: function () {
+      var orientation = this.props.orientation;
+      if (orientation === 'horizontal') return 'clientWidth';
+      if (orientation === 'vertical') return 'clientHeight';
+    },
+
+    _trimAlignValue: function (val, props) {
+      return this._alignValue(this._trimValue(val, props), props);
+    },
+
+    _trimValue: function (val, props) {
+      props = props || this.props;
+
+      if (val <= props.min) val = props.min;
+      if (val >= props.max) val = props.max;
+
+      return val;
+    },
+
+    _alignValue: function (val, props) {
+      props = props || this.props;
+
+      var valModStep = (val - props.min) % props.step;
+      var alignValue = val - valModStep;
+
+      if (Math.abs(valModStep) * 2 >= props.step) {
+        alignValue += (valModStep > 0) ? props.step : (-props.step);
+      }
+
+      return parseFloat(alignValue.toFixed(5));
+    },
+
+    _renderHandle: function (style, child, i) {
+      var self = this;
+      var className = this.props.handleClassName + ' ' +
+        (this.props.handleClassName + '-' + i) + ' ' +
+        (this.state.index === i ? this.props.handleActiveClassName : '');
+
+      return (
+        React.createElement('div', {
+            ref: function (r) {
+              self['handle' + i] = r;
+            },
+            key: 'handle' + i,
+            className: className,
+            style: style,
+            onMouseDown: this._createOnMouseDown(i),
+            onTouchStart: this._createOnTouchStart(i),
+            onFocus: this._createOnKeyDown(i),
+            tabIndex: 0,
+            role: "slider",
+            "aria-valuenow": this.state.value[i],
+            "aria-valuemin": this.props.min,
+            "aria-valuemax": this.props.max,
+            "aria-label": isArray(this.props.ariaLabel) ? this.props.ariaLabel[i] : this.props.ariaLabel,
+            "aria-valuetext": this.props.ariaValuetext,
+          },
+          child
+        )
+      );
+    },
+
+    _renderHandles: function (offset) {
+      var length = offset.length;
+
+      var styles = this.tempArray;
+      for (var i = 0; i < length; i++) {
+        styles[i] = this._buildHandleStyle(offset[i], i);
+      }
+
+      var res = [];
+      var renderHandle = this._renderHandle;
+      if (React.Children.count(this.props.children) > 0) {
+        React.Children.forEach(this.props.children, function (child, i) {
+          res[i] = renderHandle(styles[i], child, i);
+        });
+      } else {
+        for (i = 0; i < length; i++) {
+          res[i] = renderHandle(styles[i], null, i);
+        }
+      }
+      return res;
+    },
+
+    _renderBar: function (i, offsetFrom, offsetTo) {
+      var self = this;
+      return (
+        React.createElement('div', {
+          key: 'bar' + i,
+          ref: function (r) {
+            self['bar' + i] = r;
+          },
+          className: this.props.barClassName + ' ' + this.props.barClassName + '-' + i,
+          style: this._buildBarStyle(offsetFrom, this.state.upperBound - offsetTo)
+        })
+      );
+    },
+
+    _renderBars: function (offset) {
+      var bars = [];
+      var lastIndex = offset.length - 1;
+
+      bars.push(this._renderBar(0, 0, offset[0]));
+
+      for (var i = 0; i < lastIndex; i++) {
+        bars.push(this._renderBar(i + 1, offset[i], offset[i + 1]));
+      }
+
+      bars.push(this._renderBar(lastIndex + 1, offset[lastIndex], this.state.upperBound));
+
+      return bars;
+    },
+
+    _onSliderMouseDown: function (e) {
+      if (this.props.disabled) return;
+      this.hasMoved = false;
+      if (!this.props.snapDragDisabled) {
+        var position = this._getMousePosition(e);
+        this._forceValueFromPosition(position[0], function (i) {
+          this._start(i, position[0]);
+          this._fireChangeEvent('onChange');
+          this._addHandlers(this._getMouseEventMap());
+        }.bind(this));
+      }
+
+      pauseEvent(e);
+    },
+
+    _onSliderClick: function (e) {
+      if (this.props.disabled) return;
+
+      if (this.props.onSliderClick && !this.hasMoved) {
+        var position = this._getMousePosition(e);
+        var valueAtPos = this._trimAlignValue(this._calcValue(this._calcOffsetFromPosition(position[0])));
+        this.props.onSliderClick(valueAtPos);
+      }
+    },
+
+    _fireChangeEvent: function (event) {
+      if (this.props[event]) {
+        this.props[event](undoEnsureArray(this.state.value));
+      }
+    },
+
+    render: function () {
+      var self = this;
+      var state = this.state;
+      var props = this.props;
+
+      var offset = this.tempArray;
+      var value = state.value;
+      var l = value.length;
+      for (var i = 0; i < l; i++) {
+        offset[i] = this._calcOffset(value[i], i);
+      }
+
+      var bars = props.withBars ? this._renderBars(offset) : null;
+      var handles = this._renderHandles(offset);
+
+      return (
+        React.createElement('div', {
+            ref: function (r) {
+              self.slider = r;
+            },
+            style: {position: 'relative'},
+            className: props.className + (props.disabled ? ' disabled' : ''),
+            onMouseDown: this._onSliderMouseDown,
+            onClick: this._onSliderClick
+          },
+          bars,
+          handles
+        )
+      );
+    }
+  });
+
+  return ReactSlider;
+}));
+  })();
+});
+
+require.register("react-spinner/build/index.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "react-spinner");
+  (function() {
+    (function webpackUniversalModuleDefinition(root, factory) {
+	if(typeof exports === 'object' && typeof module === 'object')
+		module.exports = factory(require("react"));
+	else if(typeof define === 'function' && define.amd)
+		define(["react"], factory);
+	else if(typeof exports === 'object')
+		exports["Spinner"] = factory(require("react"));
+	else
+		root["Spinner"] = factory(root["React"]);
+})(this, function(__WEBPACK_EXTERNAL_MODULE_1__) {
+return /******/ (function(modules) { // webpackBootstrap
+/******/ 	// The module cache
+/******/ 	var installedModules = {};
+/******/
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/
+/******/ 		// Check if module is in cache
+/******/ 		if(installedModules[moduleId])
+/******/ 			return installedModules[moduleId].exports;
+/******/
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = installedModules[moduleId] = {
+/******/ 			exports: {},
+/******/ 			id: moduleId,
+/******/ 			loaded: false
+/******/ 		};
+/******/
+/******/ 		// Execute the module function
+/******/ 		modules[moduleId].call(module.exports, module, module.exports, __webpack_require__);
+/******/
+/******/ 		// Flag the module as loaded
+/******/ 		module.loaded = true;
+/******/
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/
+/******/
+/******/ 	// expose the modules object (__webpack_modules__)
+/******/ 	__webpack_require__.m = modules;
+/******/
+/******/ 	// expose the module cache
+/******/ 	__webpack_require__.c = installedModules;
+/******/
+/******/ 	// __webpack_public_path__
+/******/ 	__webpack_require__.p = "./build";
+/******/
+/******/ 	// Load entry module and return exports
+/******/ 	return __webpack_require__(0);
+/******/ })
+/************************************************************************/
+/******/ ([
+/* 0 */
+/***/ (function(module, exports, __webpack_require__) {
+
+	'use strict';
+	
+	Object.defineProperty(exports, '__esModule', {
+	  value: true
+	});
+	
+	var _extends = Object.assign || function (target) { for (var i = 1; i < arguments.length; i++) { var source = arguments[i]; for (var key in source) { if (Object.prototype.hasOwnProperty.call(source, key)) { target[key] = source[key]; } } } return target; };
+	
+	var _createClass = (function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ('value' in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; })();
+	
+	var _get = function get(_x, _x2, _x3) { var _again = true; _function: while (_again) { var object = _x, property = _x2, receiver = _x3; _again = false; if (object === null) object = Function.prototype; var desc = Object.getOwnPropertyDescriptor(object, property); if (desc === undefined) { var parent = Object.getPrototypeOf(object); if (parent === null) { return undefined; } else { _x = parent; _x2 = property; _x3 = receiver; _again = true; desc = parent = undefined; continue _function; } } else if ('value' in desc) { return desc.value; } else { var getter = desc.get; if (getter === undefined) { return undefined; } return getter.call(receiver); } } };
+	
+	function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { 'default': obj }; }
+	
+	function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError('Cannot call a class as a function'); } }
+	
+	function _inherits(subClass, superClass) { if (typeof superClass !== 'function' && superClass !== null) { throw new TypeError('Super expression must either be null or a function, not ' + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
+	
+	var _react = __webpack_require__(1);
+	
+	var _react2 = _interopRequireDefault(_react);
+	
+	var Spinner = (function (_React$Component) {
+	  _inherits(Spinner, _React$Component);
+	
+	  function Spinner(props) {
+	    _classCallCheck(this, Spinner);
+	
+	    _get(Object.getPrototypeOf(Spinner.prototype), 'constructor', this).call(this, props);
+	  }
+	
+	  _createClass(Spinner, [{
+	    key: 'render',
+	    value: function render() {
+	      var bars = [];
+	      var props = this.props;
+	
+	      for (var i = 0; i < 12; i++) {
+	        var barStyle = {};
+	        barStyle.WebkitAnimationDelay = barStyle.animationDelay = (i - 12) / 10 + 's';
+	
+	        barStyle.WebkitTransform = barStyle.transform = 'rotate(' + i * 30 + 'deg) translate(146%)';
+	
+	        bars.push(_react2['default'].createElement('div', { style: barStyle, className: 'react-spinner_bar', key: i }));
+	      }
+	
+	      return _react2['default'].createElement(
+	        'div',
+	        _extends({}, props, { className: (props.className || '') + ' react-spinner' }),
+	        bars
+	      );
+	    }
+	  }]);
+	
+	  return Spinner;
+	})(_react2['default'].Component);
+	
+	;
+	
+	exports['default'] = Spinner;
+	module.exports = exports['default'];
+
+/***/ }),
+/* 1 */
+/***/ (function(module, exports) {
+
+	module.exports = __WEBPACK_EXTERNAL_MODULE_1__;
+
+/***/ })
+/******/ ])
+});
+;
+//# sourceMappingURL=index.map
+  })();
+});
+
 require.register("react-transition-group/Transition.js", function(exports, require, module) {
   require = __makeRelativeRequire(require, {"transform":["loose-envify"]}, "react-transition-group");
   (function() {
@@ -73531,6 +72806,8 @@ require.alias("react-bootstrap/node_modules/warning/browser.js", "react-bootstra
 require.alias("react-leaflet/lib/index.js", "react-leaflet");
 require.alias("react-lifecycles-compat/react-lifecycles-compat.cjs.js", "react-lifecycles-compat");
 require.alias("react-overlays/node_modules/warning/browser.js", "react-overlays/node_modules/warning");
+require.alias("react-slider/react-slider.js", "react-slider");
+require.alias("react-spinner/build/index.js", "react-spinner");
 require.alias("warning/warning.js", "warning");process = require('process');require.register("___globals___", function(exports, require, module) {
   
 });})();require('___globals___');

@@ -234,6 +234,10 @@ var _moment = require('moment');
 
 var _moment2 = _interopRequireDefault(_moment);
 
+var _reactSpinner = require('react-spinner');
+
+var _reactSpinner2 = _interopRequireDefault(_reactSpinner);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -259,6 +263,11 @@ var EAOMap = function (_React$Component) {
         lat: 55.4085,
         lng: -125.0257
       },
+      optionsForFilters: {
+        typeOptions: [],
+        decisionOptions: [],
+        phaseOptions: []
+      },
       zoom: 6
     };
     _this.applyFilter = _this.applyFilter.bind(_this);
@@ -273,31 +282,65 @@ var EAOMap = function (_React$Component) {
       fetch("https://cors-anywhere.herokuapp.com/https://projects.eao.gov.bc.ca/api/projects/published").then(function (response) {
         return response.json();
       }).then(function (j) {
-        self.setState({ projects: j, currProjects: self.filteredProjects(j, {}) });
+        self.setState({ projects: self.processProjects(j), currProjects: self.filteredProjects(j, { includeNA: true }) });
       });
+    }
+
+    // get decisionYear for all projects
+
+  }, {
+    key: 'processProjects',
+    value: function processProjects(projects) {
+      if (projects) {
+        // get options for the drop down filters
+        this.setState({
+          optionsForFilters: this.optionsForFilters(projects)
+        });
+
+        projects.map(function (proj) {
+          proj.decisionYear = (0, _moment2.default)(proj.decisionDate).year();
+          return proj;
+        });
+
+        // get beginning and end years for the date sliders
+        var years = projects.map(function (p) {
+          return p.decisionYear;
+        }).filter(function (y) {
+          return y ? y > 0 : false;
+        });;
+        this.setState({
+          minYear: Math.min.apply(Math, years),
+          maxYear: Math.max.apply(Math, years)
+        });
+      }
+      return projects;
     }
   }, {
     key: 'filteredProjects',
     value: function filteredProjects(projects, filter) {
       return projects.filter(function (proj) {
         // check each condition and return false if it doesn't meet the test
-        if (filter.type && filter.type !== proj.type) {
+        if (filter.type && proj.type && filter.type !== proj.type) {
           return false;
         }
-        if (filter.decision && filter.decision !== proj.eacDecision) {
+        if (filter.decision && proj.eacDecision && filter.decision !== proj.eacDecision) {
           return false;
         }
-        if (filter.phase && filter.phase !== proj.currentPhase.name) {
+        if (filter.phase && proj.currentPhase.name && filter.phase !== proj.currentPhase.name) {
           return false;
         }
 
-        if (filter.startDate) {
-          if ((0, _moment2.default)(filter.startDate) > (0, _moment2.default)(proj.decisionDate)) {
+        if (!filter.includeNA && !proj.decisionYear) {
+          return false;
+        }
+
+        if (filter.startDate && proj.decisionYear) {
+          if (filter.startDate > proj.decisionYear) {
             return false;
           }
         }
-        if (filter.endDate) {
-          if ((0, _moment2.default)(filter.endDate) < (0, _moment2.default)(proj.decisionDate)) {
+        if (filter.endDate && proj.decisionYear) {
+          if (filter.endDate < proj.decisionYear && proj.decisionYear) {
             return false;
           }
         }
@@ -314,15 +357,15 @@ var EAOMap = function (_React$Component) {
     }
   }, {
     key: 'optionsForFilters',
-    value: function optionsForFilters() {
+    value: function optionsForFilters(projects) {
       var options = {};
       // type options
-      var types = this.state.projects.map(function (p) {
+      var types = projects.map(function (p) {
         return p.type;
       });
       options.typeOptions = new Set(types);
 
-      var decisions = this.state.projects.map(function (p) {
+      var decisions = projects.map(function (p) {
         return p.eacDecision;
       });
       options.decisionOptions = new Set(decisions.filter(function (p) {
@@ -333,7 +376,7 @@ var EAOMap = function (_React$Component) {
         }
       }));
 
-      var phases = this.state.projects.map(function (p) {
+      var phases = projects.map(function (p) {
         return p.currentPhase.name;
       });
       options.phaseOptions = new Set(phases);
@@ -346,6 +389,8 @@ var EAOMap = function (_React$Component) {
       var position = this.state.latlng;
       var zoom = this.state.zoom;
       var access_token = 'pk.eyJ1IjoibmdvdHRsaWViIiwiYSI6ImNqOW9uNGRzYTVmNjgzM21xemt0ZHVxZHoifQ.A6Mc9XJp5q23xmPpqbTAcQ';
+      var markers = _react2.default.createElement(ProjectMarkers, { projects: this.state.currProjects });
+      var isLoading = this.state.projects.length == 0;
       var map = _react2.default.createElement(
         'div',
         null,
@@ -359,11 +404,13 @@ var EAOMap = function (_React$Component) {
             attribution: 'data <a href=\'https://projects.eao.gov.bc.ca/\'>courtesy of the BC government</a>',
             minZoom: 5
           }),
-          _react2.default.createElement(ProjectMarkers, { projects: this.state.currProjects })
+          isLoading ? _react2.default.createElement(_reactSpinner2.default, null) : markers
         ),
         _react2.default.createElement(_FilterBox2.default, {
-          optionsForFilters: this.optionsForFilters(),
-          applyFilter: this.applyFilter
+          optionsForFilters: this.state.optionsForFilters,
+          applyFilter: this.applyFilter,
+          minYear: this.state.minYear,
+          maxYear: this.state.maxYear
         })
       );
       return map;
@@ -379,15 +426,16 @@ exports.default = EAOMap;
 var ProjectMarkers = function ProjectMarkers(_ref) {
   var projects = _ref.projects;
 
-  var items = projects.map(function (props) {
-    return _react2.default.createElement(_ProjectMarker2.default, _extends({ key: props.id }, props));
-  });
-
-  return _react2.default.createElement(
-    'div',
-    { style: { display: 'none' } },
-    items
-  );
+  if (projects) {
+    var items = projects.map(function (props) {
+      return _react2.default.createElement(_ProjectMarker2.default, _extends({ key: props.id }, props));
+    });
+    return _react2.default.createElement(
+      'div',
+      { style: { display: 'none' } },
+      items
+    );
+  }
 };
 });
 
@@ -406,15 +454,11 @@ var _react2 = _interopRequireDefault(_react);
 
 var _reactLeaflet = require('react-leaflet');
 
-var _DayPickerInput = require('react-day-picker/DayPickerInput');
-
-var _DayPickerInput2 = _interopRequireDefault(_DayPickerInput);
-
-var _moment = require('moment');
-
-var _moment2 = _interopRequireDefault(_moment);
-
 var _reactBootstrap = require('react-bootstrap');
+
+var _reactSlider = require('react-slider');
+
+var _reactSlider2 = _interopRequireDefault(_reactSlider);
 
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
@@ -435,10 +479,14 @@ var FilterBox = function (_React$Component) {
     var _this = _possibleConstructorReturn(this, (FilterBox.__proto__ || Object.getPrototypeOf(FilterBox)).call(this, props));
 
     _this.state = {
-      filter: {}
+      filter: {
+        minYear: _this.props.minYear,
+        maxYear: _this.props.maxYear,
+        includeNA: true
+      }
     };
     _this.handleInputChange = _this.handleInputChange.bind(_this);
-    _this.handleDateChange = _this.handleDateChange.bind(_this);
+    _this.handleDateSliderChange = _this.handleDateSliderChange.bind(_this);
     return _this;
   }
 
@@ -448,7 +496,6 @@ var FilterBox = function (_React$Component) {
       var target = event.target;
       var value = target.type === 'checkbox' ? target.checked : target.value;
       var name = target.name;
-      console.log(name + " " + value);
       this.updateFilter(_defineProperty({}, name, value));
     }
   }, {
@@ -456,23 +503,65 @@ var FilterBox = function (_React$Component) {
     value: function updateFilter(updates) {
       var newFilter = Object.assign({}, this.state.filter);
       Object.assign(newFilter, updates);
-      console.log(newFilter);
       this.setState({
-        filter: updates
+        filter: newFilter
       });
       this.props.applyFilter(newFilter);
     }
   }, {
-    key: 'handleDateChange',
-    value: function handleDateChange(day, modifiers, input) {
-      var target = input.getInput();
-      var name = target.name;
-      var value = target.value.trim();
-      this.updateFilter(_defineProperty({}, name, value));
+    key: 'handleDateSliderChange',
+    value: function handleDateSliderChange(value) {
+      this.updateFilter({
+        startDate: value[0],
+        endDate: value[1]
+      });
     }
   }, {
     key: 'render',
     value: function render() {
+
+      var decisionDateInputs;
+      // only render the slider once we've established its bounds
+      if (this.props.minYear && this.props.maxYear) {
+        decisionDateInputs = _react2.default.createElement(
+          _reactBootstrap.FormGroup,
+          { controlId: 'decisionDate' },
+          _react2.default.createElement(
+            _reactBootstrap.ControlLabel,
+            null,
+            'Decision Date'
+          ),
+          _react2.default.createElement(
+            _reactBootstrap.Checkbox,
+            {
+              checked: this.state.filter.includeNA,
+              name: 'includeNA',
+              onChange: this.handleInputChange
+            },
+            'Include Pending or Decision Date Not Available'
+          ),
+          _react2.default.createElement(
+            _reactSlider2.default,
+            {
+              min: this.props.minYear,
+              max: this.props.maxYear,
+              withBars: true,
+              pearling: true,
+              onChange: this.handleDateSliderChange
+            },
+            _react2.default.createElement(
+              'div',
+              null,
+              this.state.filter.startDate || this.props.minYear
+            ),
+            _react2.default.createElement(
+              'div',
+              null,
+              this.state.filter.endDate || this.props.maxYear
+            )
+          )
+        );
+      }
 
       return _react2.default.createElement(
         _reactBootstrap.Well,
@@ -506,26 +595,7 @@ var FilterBox = function (_React$Component) {
             label: 'Phase',
             options: this.optionsForFilter("phase")
           }),
-          _react2.default.createElement(
-            'label',
-            null,
-            'Start Date:'
-          ),
-          _react2.default.createElement(_DayPickerInput2.default, {
-            onDayChange: this.handleDateChange,
-            value: this.state.filter.startDate,
-            inputProps: { name: 'startDate' }
-          }),
-          _react2.default.createElement(
-            'label',
-            null,
-            'End Date:'
-          ),
-          _react2.default.createElement(_DayPickerInput2.default, {
-            onDayChange: this.handleDateChange,
-            value: this.state.filter.endDate,
-            inputProps: { name: 'endDate' }
-          })
+          decisionDateInputs
         )
       );
     }
