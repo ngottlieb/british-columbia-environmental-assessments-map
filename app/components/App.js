@@ -27,13 +27,20 @@ export default class App extends React.Component {
               the <a href="https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/environmental-assessments">Environmental Assessment Office</a>.
               This map shows all projects that either have been through or are going through the environmental assessment process since 1990.
             </p>
-            <h4> How do I use it?</h4>
+            <h4>How do I use it?</h4>
             <p>
               By default, and when you click "Reset Filter," all projects are displayed on the map. You can narrow the filters using the select boxes and date sliders
               on the right. You can find more information about what different "phases" and "decision statuses" actually
               mean <a href="https://www2.gov.bc.ca/gov/content/environment/natural-resource-stewardship/environmental-assessments/the-environmental-assessment-process">on the EAO website.</a>
             </p>
-            <h4>Some Notes</h4>
+            <h4>Why would I use it?</h4>
+            <p>
+              Kind of an open question. It allows you to explore trends in development applications over the last three decades and compare different types of projects.
+              For example, looking at just mines, you can see that over the last three years, far more mines (twenty) have been approved than in years prior.
+              It can also help you find current and past projects in a particular area; I'd heard rumors about a ski resort in the Duffy Lake Provincial Park area, for example,
+              and it's easy to find the project on the map and click through for more details.
+            </p>
+            <h4>Some notes</h4>
             <p>
               These data are from a public source provided by the EAO
               here: <a href="https://projects.eao.gov.bc.ca/">https://projects.eao.gov.bc.ca/</a>.
