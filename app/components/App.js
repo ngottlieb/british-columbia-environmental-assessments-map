@@ -54,6 +54,9 @@ export default class App extends React.Component {
               and are only shown as a single point on the map. We're hoping to find another data source at some point that will allow us to extend beyond the single
               point display per project, but for now, that's what the Epic API provides.
             </p>
+            <p>
+              Icons courtesy <a href="https://mapicons.mapsmarker.com">Map Icons Collection</a> under a Creative Commons license.
+            </p>
             <h4>Suggestions?</h4>
             <p>
               This was created by <a href="http://www.nicholasgottlieb.com">Nick Gottlieb</a>. If you have suggestions or feedback, or want to contribute to this project
