@@ -4,6 +4,8 @@ This is a map of past and pending environmental assessments in British Columbia,
 
 It's available at http://ngottlieb.github.io/british-columbia-environmental-assessments-map.
 
+The data are sourced from an API endpoint at https://projects.eao.gov.bc.ca.
+
 ## Running Locally
 
 * Get setup:
