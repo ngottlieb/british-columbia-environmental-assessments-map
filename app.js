@@ -232,7 +232,7 @@ var App = function (_React$Component) {
             _react2.default.createElement(
               'h4',
               null,
-              ' How do I use it?'
+              'How do I use it?'
             ),
             _react2.default.createElement(
               'p',
@@ -247,7 +247,17 @@ var App = function (_React$Component) {
             _react2.default.createElement(
               'h4',
               null,
-              'Some Notes'
+              'Why would I use it?'
+            ),
+            _react2.default.createElement(
+              'p',
+              null,
+              'Kind of an open question. It allows you to explore trends in development applications over the last three decades and compare different types of projects. For example, looking at just mines, you can see that over the last three years, far more mines (twenty) have been approved than in years prior. It can also help you find current and past projects in a particular area; I\'d heard rumors about a ski resort in the Duffy Lake Provincial Park area, for example, and it\'s easy to find the project on the map and click through for more details.'
+            ),
+            _react2.default.createElement(
+              'h4',
+              null,
+              'Some notes'
             ),
             _react2.default.createElement(
               'p',
@@ -264,6 +274,17 @@ var App = function (_React$Component) {
               'p',
               null,
               'The points provided for each project with the data are not necessarily representative of the full scope of the project. For example, there are a handful of hydro projects including the "Narrows Inlet Hydro" west of the Tantalus Range that include multiple dams under one umbrella and are only shown as a single point on the map. We\'re hoping to find another data source at some point that will allow us to extend beyond the single point display per project, but for now, that\'s what the Epic API provides.'
+            ),
+            _react2.default.createElement(
+              'p',
+              null,
+              'Icons courtesy ',
+              _react2.default.createElement(
+                'a',
+                { href: 'https://mapicons.mapsmarker.com' },
+                'Map Icons Collection'
+              ),
+              ' under a Creative Commons license.'
             ),
             _react2.default.createElement(
               'h4',
@@ -863,6 +884,10 @@ var _leaflet = require('leaflet');
 
 var _leaflet2 = _interopRequireDefault(_leaflet);
 
+var _moment = require('moment');
+
+var _moment2 = _interopRequireDefault(_moment);
+
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
@@ -893,6 +918,50 @@ var ProjectMarker = function (_React$Component) {
             'h3',
             null,
             this.props.name
+          ),
+          _react2.default.createElement(
+            'dl',
+            null,
+            _react2.default.createElement(
+              'dt',
+              null,
+              'Type'
+            ),
+            _react2.default.createElement(
+              'dd',
+              null,
+              this.props.type
+            ),
+            _react2.default.createElement(
+              'dt',
+              null,
+              'Decision'
+            ),
+            _react2.default.createElement(
+              'dd',
+              null,
+              this.props.eacDecision ? this.props.eacDecision : 'N/A'
+            ),
+            _react2.default.createElement(
+              'dt',
+              null,
+              'Decision Date'
+            ),
+            _react2.default.createElement(
+              'dd',
+              null,
+              this.props.decisionDate ? (0, _moment2.default)(this.props.decisionDate).format('MMMM Do YYYY') : 'N/A'
+            ),
+            _react2.default.createElement(
+              'dt',
+              null,
+              'Proponent'
+            ),
+            _react2.default.createElement(
+              'dd',
+              null,
+              this.props.proponent ? this.props.proponent.name : ''
+            )
           ),
           _react2.default.createElement(
             'p',
