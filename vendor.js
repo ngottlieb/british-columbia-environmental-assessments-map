@@ -149,210 +149,8 @@ var __makeRelativeRequire = function(require, mappings, pref) {
   }
 };
 
-require.register("@babel/runtime-corejs2/core-js/array/from.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    module.exports = require("core-js/library/fn/array/from");
-  })();
-});
-
-require.register("@babel/runtime-corejs2/core-js/array/is-array.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    module.exports = require("core-js/library/fn/array/is-array");
-  })();
-});
-
-require.register("@babel/runtime-corejs2/core-js/object/assign.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    module.exports = require("core-js/library/fn/object/assign");
-  })();
-});
-
-require.register("@babel/runtime-corejs2/core-js/object/create.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    module.exports = require("core-js/library/fn/object/create");
-  })();
-});
-
-require.register("@babel/runtime-corejs2/core-js/object/define-property.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    module.exports = require("core-js/library/fn/object/define-property");
-  })();
-});
-
-require.register("@babel/runtime-corejs2/core-js/object/entries.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    module.exports = require("core-js/library/fn/object/entries");
-  })();
-});
-
-require.register("@babel/runtime-corejs2/core-js/object/get-own-property-descriptor.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    module.exports = require("core-js/library/fn/object/get-own-property-descriptor");
-  })();
-});
-
-require.register("@babel/runtime-corejs2/core-js/object/keys.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    module.exports = require("core-js/library/fn/object/keys");
-  })();
-});
-
-require.register("@babel/runtime-corejs2/core-js/object/values.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    module.exports = require("core-js/library/fn/object/values");
-  })();
-});
-
-require.register("@babel/runtime-corejs2/core-js/parse-int.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    module.exports = require("core-js/library/fn/parse-int");
-  })();
-});
-
-require.register("@babel/runtime-corejs2/helpers/assertThisInitialized.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    function _assertThisInitialized(self) {
-  if (self === void 0) {
-    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
-  }
-
-  return self;
-}
-
-module.exports = _assertThisInitialized;
-  })();
-});
-
-require.register("@babel/runtime-corejs2/helpers/extends.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    var _Object$assign = require("../core-js/object/assign");
-
-function _extends() {
-  module.exports = _extends = _Object$assign || function (target) {
-    for (var i = 1; i < arguments.length; i++) {
-      var source = arguments[i];
-
-      for (var key in source) {
-        if (Object.prototype.hasOwnProperty.call(source, key)) {
-          target[key] = source[key];
-        }
-      }
-    }
-
-    return target;
-  };
-
-  return _extends.apply(this, arguments);
-}
-
-module.exports = _extends;
-  })();
-});
-
-require.register("@babel/runtime-corejs2/helpers/inheritsLoose.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    var _Object$create = require("../core-js/object/create");
-
-function _inheritsLoose(subClass, superClass) {
-  subClass.prototype = _Object$create(superClass.prototype);
-  subClass.prototype.constructor = subClass;
-  subClass.__proto__ = superClass;
-}
-
-module.exports = _inheritsLoose;
-  })();
-});
-
-require.register("@babel/runtime-corejs2/helpers/interopRequireDefault.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    function _interopRequireDefault(obj) {
-  return obj && obj.__esModule ? obj : {
-    default: obj
-  };
-}
-
-module.exports = _interopRequireDefault;
-  })();
-});
-
-require.register("@babel/runtime-corejs2/helpers/interopRequireWildcard.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    var _Object$getOwnPropertyDescriptor = require("../core-js/object/get-own-property-descriptor");
-
-var _Object$defineProperty = require("../core-js/object/define-property");
-
-function _interopRequireWildcard(obj) {
-  if (obj && obj.__esModule) {
-    return obj;
-  } else {
-    var newObj = {};
-
-    if (obj != null) {
-      for (var key in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-          var desc = _Object$defineProperty && _Object$getOwnPropertyDescriptor ? _Object$getOwnPropertyDescriptor(obj, key) : {};
-
-          if (desc.get || desc.set) {
-            _Object$defineProperty(newObj, key, desc);
-          } else {
-            newObj[key] = obj[key];
-          }
-        }
-      }
-    }
-
-    newObj.default = obj;
-    return newObj;
-  }
-}
-
-module.exports = _interopRequireWildcard;
-  })();
-});
-
-require.register("@babel/runtime-corejs2/helpers/objectWithoutPropertiesLoose.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
-  (function() {
-    var _Object$keys = require("../core-js/object/keys");
-
-function _objectWithoutPropertiesLoose(source, excluded) {
-  if (source == null) return {};
-  var target = {};
-
-  var sourceKeys = _Object$keys(source);
-
-  var key, i;
-
-  for (i = 0; i < sourceKeys.length; i++) {
-    key = sourceKeys[i];
-    if (excluded.indexOf(key) >= 0) continue;
-    target[key] = source[key];
-  }
-
-  return target;
-}
-
-module.exports = _objectWithoutPropertiesLoose;
-  })();
-});
-
-require.register("base64-js/index.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "base64-js");
+require.register("brunch/node_modules/base64-js/index.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "brunch/node_modules/base64-js");
   (function() {
     'use strict'
 
@@ -508,8 +306,8 @@ function fromByteArray (uint8) {
   })();
 });
 
-require.register("buffer/index.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "buffer");
+require.register("brunch/node_modules/buffer/index.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "brunch/node_modules/buffer");
   var _Buffer = require('buffer'); var Buffer = _Buffer && _Buffer.Buffer;
 (function() {
     /*!
@@ -1967,6 +1765,499 @@ function blitBuffer (src, dst, offset, length) {
   }
   return i
 }
+  })();
+});
+
+require.register("brunch/node_modules/ieee754/index.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "brunch/node_modules/ieee754");
+  (function() {
+    exports.read = function (buffer, offset, isLE, mLen, nBytes) {
+  var e, m
+  var eLen = (nBytes * 8) - mLen - 1
+  var eMax = (1 << eLen) - 1
+  var eBias = eMax >> 1
+  var nBits = -7
+  var i = isLE ? (nBytes - 1) : 0
+  var d = isLE ? -1 : 1
+  var s = buffer[offset + i]
+
+  i += d
+
+  e = s & ((1 << (-nBits)) - 1)
+  s >>= (-nBits)
+  nBits += eLen
+  for (; nBits > 0; e = (e * 256) + buffer[offset + i], i += d, nBits -= 8) {}
+
+  m = e & ((1 << (-nBits)) - 1)
+  e >>= (-nBits)
+  nBits += mLen
+  for (; nBits > 0; m = (m * 256) + buffer[offset + i], i += d, nBits -= 8) {}
+
+  if (e === 0) {
+    e = 1 - eBias
+  } else if (e === eMax) {
+    return m ? NaN : ((s ? -1 : 1) * Infinity)
+  } else {
+    m = m + Math.pow(2, mLen)
+    e = e - eBias
+  }
+  return (s ? -1 : 1) * m * Math.pow(2, e - mLen)
+}
+
+exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
+  var e, m, c
+  var eLen = (nBytes * 8) - mLen - 1
+  var eMax = (1 << eLen) - 1
+  var eBias = eMax >> 1
+  var rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0)
+  var i = isLE ? 0 : (nBytes - 1)
+  var d = isLE ? 1 : -1
+  var s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0
+
+  value = Math.abs(value)
+
+  if (isNaN(value) || value === Infinity) {
+    m = isNaN(value) ? 1 : 0
+    e = eMax
+  } else {
+    e = Math.floor(Math.log(value) / Math.LN2)
+    if (value * (c = Math.pow(2, -e)) < 1) {
+      e--
+      c *= 2
+    }
+    if (e + eBias >= 1) {
+      value += rt / c
+    } else {
+      value += rt * Math.pow(2, 1 - eBias)
+    }
+    if (value * c >= 2) {
+      e++
+      c /= 2
+    }
+
+    if (e + eBias >= eMax) {
+      m = 0
+      e = eMax
+    } else if (e + eBias >= 1) {
+      m = ((value * c) - 1) * Math.pow(2, mLen)
+      e = e + eBias
+    } else {
+      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen)
+      e = 0
+    }
+  }
+
+  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8) {}
+
+  e = (e << mLen) | m
+  eLen += mLen
+  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8) {}
+
+  buffer[offset + i - d] |= s * 128
+}
+  })();
+});
+
+require.register("brunch/node_modules/isarray/index.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "brunch/node_modules/isarray");
+  (function() {
+    var toString = {}.toString;
+
+module.exports = Array.isArray || function (arr) {
+  return toString.call(arr) == '[object Array]';
+};
+  })();
+});
+
+require.register("brunch/node_modules/process/browser.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "brunch/node_modules/process");
+  (function() {
+    // shim for using process in browser
+var process = module.exports = {};
+
+// cached from whatever global is present so that test runners that stub it
+// don't break things.  But we need to wrap it in a try catch in case it is
+// wrapped in strict mode code which doesn't define any globals.  It's inside a
+// function because try/catches deoptimize in certain engines.
+
+var cachedSetTimeout;
+var cachedClearTimeout;
+
+function defaultSetTimout() {
+    throw new Error('setTimeout has not been defined');
+}
+function defaultClearTimeout () {
+    throw new Error('clearTimeout has not been defined');
+}
+(function () {
+    try {
+        if (typeof setTimeout === 'function') {
+            cachedSetTimeout = setTimeout;
+        } else {
+            cachedSetTimeout = defaultSetTimout;
+        }
+    } catch (e) {
+        cachedSetTimeout = defaultSetTimout;
+    }
+    try {
+        if (typeof clearTimeout === 'function') {
+            cachedClearTimeout = clearTimeout;
+        } else {
+            cachedClearTimeout = defaultClearTimeout;
+        }
+    } catch (e) {
+        cachedClearTimeout = defaultClearTimeout;
+    }
+} ())
+function runTimeout(fun) {
+    if (cachedSetTimeout === setTimeout) {
+        //normal enviroments in sane situations
+        return setTimeout(fun, 0);
+    }
+    // if setTimeout wasn't available but was latter defined
+    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
+        cachedSetTimeout = setTimeout;
+        return setTimeout(fun, 0);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedSetTimeout(fun, 0);
+    } catch(e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
+            return cachedSetTimeout.call(null, fun, 0);
+        } catch(e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
+            return cachedSetTimeout.call(this, fun, 0);
+        }
+    }
+
+
+}
+function runClearTimeout(marker) {
+    if (cachedClearTimeout === clearTimeout) {
+        //normal enviroments in sane situations
+        return clearTimeout(marker);
+    }
+    // if clearTimeout wasn't available but was latter defined
+    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
+        cachedClearTimeout = clearTimeout;
+        return clearTimeout(marker);
+    }
+    try {
+        // when when somebody has screwed with setTimeout but no I.E. maddness
+        return cachedClearTimeout(marker);
+    } catch (e){
+        try {
+            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
+            return cachedClearTimeout.call(null, marker);
+        } catch (e){
+            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
+            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
+            return cachedClearTimeout.call(this, marker);
+        }
+    }
+
+
+
+}
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
+
+function cleanUpNextTick() {
+    if (!draining || !currentQueue) {
+        return;
+    }
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
+    }
+    if (queue.length) {
+        drainQueue();
+    }
+}
+
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = runTimeout(cleanUpNextTick);
+    draining = true;
+
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            if (currentQueue) {
+                currentQueue[queueIndex].run();
+            }
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    runClearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        runTimeout(drainQueue);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
+process.title = 'browser';
+process.browser = true;
+process.env = {};
+process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
+
+function noop() {}
+
+process.on = noop;
+process.addListener = noop;
+process.once = noop;
+process.off = noop;
+process.removeListener = noop;
+process.removeAllListeners = noop;
+process.emit = noop;
+process.prependListener = noop;
+process.prependOnceListener = noop;
+
+process.listeners = function (name) { return [] }
+
+process.binding = function (name) {
+    throw new Error('process.binding is not supported');
+};
+
+process.cwd = function () { return '/' };
+process.chdir = function (dir) {
+    throw new Error('process.chdir is not supported');
+};
+process.umask = function() { return 0; };
+  })();
+});
+
+require.register("@babel/runtime-corejs2/core-js/array/from.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    module.exports = require("core-js/library/fn/array/from");
+  })();
+});
+
+require.register("@babel/runtime-corejs2/core-js/array/is-array.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    module.exports = require("core-js/library/fn/array/is-array");
+  })();
+});
+
+require.register("@babel/runtime-corejs2/core-js/object/assign.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    module.exports = require("core-js/library/fn/object/assign");
+  })();
+});
+
+require.register("@babel/runtime-corejs2/core-js/object/create.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    module.exports = require("core-js/library/fn/object/create");
+  })();
+});
+
+require.register("@babel/runtime-corejs2/core-js/object/define-property.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    module.exports = require("core-js/library/fn/object/define-property");
+  })();
+});
+
+require.register("@babel/runtime-corejs2/core-js/object/entries.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    module.exports = require("core-js/library/fn/object/entries");
+  })();
+});
+
+require.register("@babel/runtime-corejs2/core-js/object/get-own-property-descriptor.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    module.exports = require("core-js/library/fn/object/get-own-property-descriptor");
+  })();
+});
+
+require.register("@babel/runtime-corejs2/core-js/object/keys.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    module.exports = require("core-js/library/fn/object/keys");
+  })();
+});
+
+require.register("@babel/runtime-corejs2/core-js/object/values.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    module.exports = require("core-js/library/fn/object/values");
+  })();
+});
+
+require.register("@babel/runtime-corejs2/core-js/parse-int.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    module.exports = require("core-js/library/fn/parse-int");
+  })();
+});
+
+require.register("@babel/runtime-corejs2/helpers/assertThisInitialized.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    function _assertThisInitialized(self) {
+  if (self === void 0) {
+    throw new ReferenceError("this hasn't been initialised - super() hasn't been called");
+  }
+
+  return self;
+}
+
+module.exports = _assertThisInitialized;
+  })();
+});
+
+require.register("@babel/runtime-corejs2/helpers/extends.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    var _Object$assign = require("../core-js/object/assign");
+
+function _extends() {
+  module.exports = _extends = _Object$assign || function (target) {
+    for (var i = 1; i < arguments.length; i++) {
+      var source = arguments[i];
+
+      for (var key in source) {
+        if (Object.prototype.hasOwnProperty.call(source, key)) {
+          target[key] = source[key];
+        }
+      }
+    }
+
+    return target;
+  };
+
+  return _extends.apply(this, arguments);
+}
+
+module.exports = _extends;
+  })();
+});
+
+require.register("@babel/runtime-corejs2/helpers/inheritsLoose.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    var _Object$create = require("../core-js/object/create");
+
+function _inheritsLoose(subClass, superClass) {
+  subClass.prototype = _Object$create(superClass.prototype);
+  subClass.prototype.constructor = subClass;
+  subClass.__proto__ = superClass;
+}
+
+module.exports = _inheritsLoose;
+  })();
+});
+
+require.register("@babel/runtime-corejs2/helpers/interopRequireDefault.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    function _interopRequireDefault(obj) {
+  return obj && obj.__esModule ? obj : {
+    default: obj
+  };
+}
+
+module.exports = _interopRequireDefault;
+  })();
+});
+
+require.register("@babel/runtime-corejs2/helpers/interopRequireWildcard.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    var _Object$getOwnPropertyDescriptor = require("../core-js/object/get-own-property-descriptor");
+
+var _Object$defineProperty = require("../core-js/object/define-property");
+
+function _interopRequireWildcard(obj) {
+  if (obj && obj.__esModule) {
+    return obj;
+  } else {
+    var newObj = {};
+
+    if (obj != null) {
+      for (var key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          var desc = _Object$defineProperty && _Object$getOwnPropertyDescriptor ? _Object$getOwnPropertyDescriptor(obj, key) : {};
+
+          if (desc.get || desc.set) {
+            _Object$defineProperty(newObj, key, desc);
+          } else {
+            newObj[key] = obj[key];
+          }
+        }
+      }
+    }
+
+    newObj.default = obj;
+    return newObj;
+  }
+}
+
+module.exports = _interopRequireWildcard;
+  })();
+});
+
+require.register("@babel/runtime-corejs2/helpers/objectWithoutPropertiesLoose.js", function(exports, require, module) {
+  require = __makeRelativeRequire(require, {}, "@babel/runtime-corejs2");
+  (function() {
+    var _Object$keys = require("../core-js/object/keys");
+
+function _objectWithoutPropertiesLoose(source, excluded) {
+  if (source == null) return {};
+  var target = {};
+
+  var sourceKeys = _Object$keys(source);
+
+  var key, i;
+
+  for (i = 0; i < sourceKeys.length; i++) {
+    key = sourceKeys[i];
+    if (excluded.indexOf(key) >= 0) continue;
+    target[key] = source[key];
+  }
+
+  return target;
+}
+
+module.exports = _objectWithoutPropertiesLoose;
   })();
 });
 
@@ -5700,96 +5991,6 @@ module.exports = hoistNonReactStatics;
   })();
 });
 
-require.register("ieee754/index.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "ieee754");
-  (function() {
-    exports.read = function (buffer, offset, isLE, mLen, nBytes) {
-  var e, m
-  var eLen = (nBytes * 8) - mLen - 1
-  var eMax = (1 << eLen) - 1
-  var eBias = eMax >> 1
-  var nBits = -7
-  var i = isLE ? (nBytes - 1) : 0
-  var d = isLE ? -1 : 1
-  var s = buffer[offset + i]
-
-  i += d
-
-  e = s & ((1 << (-nBits)) - 1)
-  s >>= (-nBits)
-  nBits += eLen
-  for (; nBits > 0; e = (e * 256) + buffer[offset + i], i += d, nBits -= 8) {}
-
-  m = e & ((1 << (-nBits)) - 1)
-  e >>= (-nBits)
-  nBits += mLen
-  for (; nBits > 0; m = (m * 256) + buffer[offset + i], i += d, nBits -= 8) {}
-
-  if (e === 0) {
-    e = 1 - eBias
-  } else if (e === eMax) {
-    return m ? NaN : ((s ? -1 : 1) * Infinity)
-  } else {
-    m = m + Math.pow(2, mLen)
-    e = e - eBias
-  }
-  return (s ? -1 : 1) * m * Math.pow(2, e - mLen)
-}
-
-exports.write = function (buffer, value, offset, isLE, mLen, nBytes) {
-  var e, m, c
-  var eLen = (nBytes * 8) - mLen - 1
-  var eMax = (1 << eLen) - 1
-  var eBias = eMax >> 1
-  var rt = (mLen === 23 ? Math.pow(2, -24) - Math.pow(2, -77) : 0)
-  var i = isLE ? 0 : (nBytes - 1)
-  var d = isLE ? 1 : -1
-  var s = value < 0 || (value === 0 && 1 / value < 0) ? 1 : 0
-
-  value = Math.abs(value)
-
-  if (isNaN(value) || value === Infinity) {
-    m = isNaN(value) ? 1 : 0
-    e = eMax
-  } else {
-    e = Math.floor(Math.log(value) / Math.LN2)
-    if (value * (c = Math.pow(2, -e)) < 1) {
-      e--
-      c *= 2
-    }
-    if (e + eBias >= 1) {
-      value += rt / c
-    } else {
-      value += rt * Math.pow(2, 1 - eBias)
-    }
-    if (value * c >= 2) {
-      e++
-      c /= 2
-    }
-
-    if (e + eBias >= eMax) {
-      m = 0
-      e = eMax
-    } else if (e + eBias >= 1) {
-      m = ((value * c) - 1) * Math.pow(2, mLen)
-      e = e + eBias
-    } else {
-      m = value * Math.pow(2, eBias - 1) * Math.pow(2, mLen)
-      e = 0
-    }
-  }
-
-  for (; mLen >= 8; buffer[offset + i] = m & 0xff, i += d, m /= 256, mLen -= 8) {}
-
-  e = (e << mLen) | m
-  eLen += mLen
-  for (; eLen > 0; buffer[offset + i] = e & 0xff, i += d, e /= 256, eLen -= 8) {}
-
-  buffer[offset + i - d] |= s * 128
-}
-  })();
-});
-
 require.register("invariant/browser.js", function(exports, require, module) {
   require = __makeRelativeRequire(require, {}, "invariant");
   (function() {
@@ -5842,17 +6043,6 @@ var invariant = function(condition, format, a, b, c, d, e, f) {
 };
 
 module.exports = invariant;
-  })();
-});
-
-require.register("isarray/index.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "isarray");
-  (function() {
-    var toString = {}.toString;
-
-module.exports = Array.isArray || function (arr) {
-  return toString.call(arr) == '[object Array]';
-};
   })();
 });
 
@@ -30385,196 +30575,6 @@ module.exports = shouldUseNative() ? Object.assign : function (target, source) {
 
 	return to;
 };
-  })();
-});
-
-require.register("process/browser.js", function(exports, require, module) {
-  require = __makeRelativeRequire(require, {}, "process");
-  (function() {
-    // shim for using process in browser
-var process = module.exports = {};
-
-// cached from whatever global is present so that test runners that stub it
-// don't break things.  But we need to wrap it in a try catch in case it is
-// wrapped in strict mode code which doesn't define any globals.  It's inside a
-// function because try/catches deoptimize in certain engines.
-
-var cachedSetTimeout;
-var cachedClearTimeout;
-
-function defaultSetTimout() {
-    throw new Error('setTimeout has not been defined');
-}
-function defaultClearTimeout () {
-    throw new Error('clearTimeout has not been defined');
-}
-(function () {
-    try {
-        if (typeof setTimeout === 'function') {
-            cachedSetTimeout = setTimeout;
-        } else {
-            cachedSetTimeout = defaultSetTimout;
-        }
-    } catch (e) {
-        cachedSetTimeout = defaultSetTimout;
-    }
-    try {
-        if (typeof clearTimeout === 'function') {
-            cachedClearTimeout = clearTimeout;
-        } else {
-            cachedClearTimeout = defaultClearTimeout;
-        }
-    } catch (e) {
-        cachedClearTimeout = defaultClearTimeout;
-    }
-} ())
-function runTimeout(fun) {
-    if (cachedSetTimeout === setTimeout) {
-        //normal enviroments in sane situations
-        return setTimeout(fun, 0);
-    }
-    // if setTimeout wasn't available but was latter defined
-    if ((cachedSetTimeout === defaultSetTimout || !cachedSetTimeout) && setTimeout) {
-        cachedSetTimeout = setTimeout;
-        return setTimeout(fun, 0);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedSetTimeout(fun, 0);
-    } catch(e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't trust the global object when called normally
-            return cachedSetTimeout.call(null, fun, 0);
-        } catch(e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error
-            return cachedSetTimeout.call(this, fun, 0);
-        }
-    }
-
-
-}
-function runClearTimeout(marker) {
-    if (cachedClearTimeout === clearTimeout) {
-        //normal enviroments in sane situations
-        return clearTimeout(marker);
-    }
-    // if clearTimeout wasn't available but was latter defined
-    if ((cachedClearTimeout === defaultClearTimeout || !cachedClearTimeout) && clearTimeout) {
-        cachedClearTimeout = clearTimeout;
-        return clearTimeout(marker);
-    }
-    try {
-        // when when somebody has screwed with setTimeout but no I.E. maddness
-        return cachedClearTimeout(marker);
-    } catch (e){
-        try {
-            // When we are in I.E. but the script has been evaled so I.E. doesn't  trust the global object when called normally
-            return cachedClearTimeout.call(null, marker);
-        } catch (e){
-            // same as above but when it's a version of I.E. that must have the global object for 'this', hopfully our context correct otherwise it will throw a global error.
-            // Some versions of I.E. have different rules for clearTimeout vs setTimeout
-            return cachedClearTimeout.call(this, marker);
-        }
-    }
-
-
-
-}
-var queue = [];
-var draining = false;
-var currentQueue;
-var queueIndex = -1;
-
-function cleanUpNextTick() {
-    if (!draining || !currentQueue) {
-        return;
-    }
-    draining = false;
-    if (currentQueue.length) {
-        queue = currentQueue.concat(queue);
-    } else {
-        queueIndex = -1;
-    }
-    if (queue.length) {
-        drainQueue();
-    }
-}
-
-function drainQueue() {
-    if (draining) {
-        return;
-    }
-    var timeout = runTimeout(cleanUpNextTick);
-    draining = true;
-
-    var len = queue.length;
-    while(len) {
-        currentQueue = queue;
-        queue = [];
-        while (++queueIndex < len) {
-            if (currentQueue) {
-                currentQueue[queueIndex].run();
-            }
-        }
-        queueIndex = -1;
-        len = queue.length;
-    }
-    currentQueue = null;
-    draining = false;
-    runClearTimeout(timeout);
-}
-
-process.nextTick = function (fun) {
-    var args = new Array(arguments.length - 1);
-    if (arguments.length > 1) {
-        for (var i = 1; i < arguments.length; i++) {
-            args[i - 1] = arguments[i];
-        }
-    }
-    queue.push(new Item(fun, args));
-    if (queue.length === 1 && !draining) {
-        runTimeout(drainQueue);
-    }
-};
-
-// v8 likes predictible objects
-function Item(fun, array) {
-    this.fun = fun;
-    this.array = array;
-}
-Item.prototype.run = function () {
-    this.fun.apply(null, this.array);
-};
-process.title = 'browser';
-process.browser = true;
-process.env = {};
-process.argv = [];
-process.version = ''; // empty string to avoid regexp issues
-process.versions = {};
-
-function noop() {}
-
-process.on = noop;
-process.addListener = noop;
-process.once = noop;
-process.off = noop;
-process.removeListener = noop;
-process.removeAllListeners = noop;
-process.emit = noop;
-process.prependListener = noop;
-process.prependOnceListener = noop;
-
-process.listeners = function (name) { return [] }
-
-process.binding = function (name) {
-    throw new Error('process.binding is not supported');
-};
-
-process.cwd = function () { return '/' };
-process.chdir = function (dir) {
-    throw new Error('process.chdir is not supported');
-};
-process.umask = function() { return 0; };
   })();
 });
 
@@ -72794,12 +72794,12 @@ if (__DEV__) {
 module.exports = warning;
   })();
 });
-require.alias("buffer/index.js", "buffer");
+require.alias("brunch/node_modules/buffer/index.js", "buffer");
 require.alias("hoist-non-react-statics/dist/hoist-non-react-statics.cjs.js", "hoist-non-react-statics");
 require.alias("invariant/browser.js", "invariant");
 require.alias("leaflet/dist/leaflet-src.js", "leaflet");
 require.alias("moment/moment.js", "moment");
-require.alias("process/browser.js", "process");
+require.alias("brunch/node_modules/process/browser.js", "process");
 require.alias("prop-types-extra/node_modules/warning/browser.js", "prop-types-extra/node_modules/warning");
 require.alias("react-bootstrap/lib/index.js", "react-bootstrap");
 require.alias("react-bootstrap/node_modules/warning/browser.js", "react-bootstrap/node_modules/warning");
