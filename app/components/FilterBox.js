@@ -146,7 +146,7 @@ export default class FilterBox extends React.Component {
   optionsForFilter(attribute) {
     const options = [];
     for (let opt of this.props.optionsForFilters[attribute + "Options"]) {
-      options.push(<option value={opt}>{opt}</option>);
+      options.push(<option key={opt} value={opt}>{opt}</option>);
     }
     return(options);
   }
