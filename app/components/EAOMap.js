@@ -1,14 +1,14 @@
-import React from 'react';
-import { render } from 'react-dom';
-import { Map, Marker, Popup, TileLayer, Pane } from 'react-leaflet';
-import ProjectMarker from './ProjectMarker';
-import L from 'leaflet';
-import FilterBox from './FilterBox';
-import moment from 'moment';
-import Spinner from 'react-spinner';
+import React from "react";
+import { render } from "react-dom";
+import { Map, Marker, Popup, TileLayer, Pane } from "react-leaflet";
+import ProjectMarker from "./ProjectMarker";
+import L from "leaflet";
+import FilterBox from "./FilterBox";
+import moment from "moment";
+import Spinner from "react-spinner";
 
 L.Icon.Default.imagePath =
-  '//cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.4/images/';
+  "//cdnjs.cloudflare.com/ajax/libs/leaflet/1.3.4/images/";
 
 export default class EAOMap extends React.Component {
   constructor(props) {
@@ -26,16 +26,36 @@ export default class EAOMap extends React.Component {
         phaseOptions: []
       },
       zoom: 6
-    }
+    };
     this.applyFilter = this.applyFilter.bind(this);
     this.fetchData();
   }
 
   fetchData() {
-    var self = this;
-    fetch("https://cors-anywhere.herokuapp.com/https://projects.eao.gov.bc.ca/api/projects/published")
-      .then(function(response) { return response.json(); })
-      .then(function(j) { self.setState({ projects: self.processProjects(j), currProjects: self.filteredProjects(j, { includeNA: true }) }) });
+    fetch(
+      "https://eagle-prod.pathfinder.gov.bc.ca/api/public/search?dataset=Project&pageNum=0&pageSize=1000&sortBy=-score&populate=true"
+    )
+      .then(response => response.json())
+      .then(j => {
+        this.parseResponse(j);
+      })
+      .catch(error => {
+        console.log(`Failed to retrieve projects from BC EAO API: ${error}`);
+        console.log("Using local backup");
+        fetch("backup_data.json")
+          .then(response => response.json())
+          .then(j => {
+            this.parseResponse(j);
+          });
+      });
+  }
+
+  parseResponse(results) {
+    const projs = results[0].searchResults;
+    this.setState({
+      projects: this.processProjects(projs),
+      currProjects: this.filteredProjects(projs, { includeNA: true })
+    });
   }
 
   // get decisionYear for all projects
@@ -46,13 +66,19 @@ export default class EAOMap extends React.Component {
         optionsForFilters: this.optionsForFilters(projects)
       });
 
-      projects.map((proj) => {
+      projects.map(proj => {
         proj.decisionYear = moment(proj.decisionDate).year();
         return proj;
       });
 
       // get beginning and end years for the date sliders
-      const years = projects.map(function(p) { return p.decisionYear; }).filter(function(y) { return (y ? y > 0 : false); });;
+      const years = projects
+        .map(function(p) {
+          return p.decisionYear;
+        })
+        .filter(function(y) {
+          return y ? y > 0 : false;
+        });
       this.setState({
         minYear: Math.min.apply(Math, years),
         maxYear: Math.max.apply(Math, years)
@@ -64,9 +90,23 @@ export default class EAOMap extends React.Component {
   filteredProjects(projects, filter) {
     return projects.filter(function(proj) {
       // check each condition and return false if it doesn't meet the test
-      if (filter.type && proj.type && filter.type !== proj.type) { return false; }
-      if (filter.decision && proj.eacDecision && filter.decision !== proj.eacDecision) { return false; }
-      if (filter.phase && proj.currentPhase.name && filter.phase !== proj.currentPhase.name) { return false; }
+      if (filter.type && proj.type && filter.type !== proj.type) {
+        return false;
+      }
+      if (
+        filter.decision &&
+        proj.eacDecision &&
+        filter.decision !== proj.eacDecision
+      ) {
+        return false;
+      }
+      if (
+        filter.phase &&
+        proj.currentPhaseName &&
+        filter.phase !== proj.currentPhaseName
+      ) {
+        return false;
+      }
 
       if (!filter.includeNA && !proj.decisionYear) {
         return false;
@@ -96,42 +136,50 @@ export default class EAOMap extends React.Component {
   optionsForFilters(projects) {
     var options = {};
     // type options
-    const types = projects.map(function(p) { return p.type; });
-    options.typeOptions = new Set(types)
+    const types = projects.map(function(p) {
+      return p.type;
+    });
+    options.typeOptions = new Set(types);
 
-    var decisions = projects.map(function(p) { return p.eacDecision; });
-    options.decisionOptions = new Set(decisions.filter(
-      function(p) { 
+    var decisions = projects.map(function(p) {
+      return p.eacDecision;
+    });
+    options.decisionOptions = new Set(
+      decisions.filter(function(p) {
         if (p) {
           return p.length > 0;
         } else {
           return false;
-        }}));
-    
-    var phases = projects.map(function(p) { return p.currentPhase.name; });
+        }
+      })
+    );
+
+    var phases = projects.map(function(p) {
+      return p.currentPhaseName;
+    });
     options.phaseOptions = new Set(phases);
 
     return options;
   }
 
-
   render() {
     const position = this.state.latlng;
     const zoom = this.state.zoom;
-    const access_token = 'pk.eyJ1IjoibmdvdHRsaWViIiwiYSI6ImNqOW9uNGRzYTVmNjgzM21xemt0ZHVxZHoifQ.A6Mc9XJp5q23xmPpqbTAcQ'
-    const markers = (<ProjectMarkers projects={this.state.currProjects} />);
+    const access_token =
+      "pk.eyJ1IjoibmdvdHRsaWViIiwiYSI6ImNqOW9uNGRzYTVmNjgzM21xemt0ZHVxZHoifQ.A6Mc9XJp5q23xmPpqbTAcQ";
+    const markers = <ProjectMarkers projects={this.state.currProjects} />;
     const isLoading = this.state.projects.length == 0;
     const map = (
       <div>
         <Map center={position} zoom={zoom}>
           <TileLayer
-            url='https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}'
+            url="https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}"
             accessToken={access_token}
             id="mapbox.outdoors"
             attribution="data <a href='https://projects.eao.gov.bc.ca/'>courtesy of the BC government</a>"
             minZoom={5}
           />
-          { isLoading ? (<Spinner />) : markers }
+          {isLoading ? <Spinner /> : markers}
         </Map>
         <FilterBox
           openModal={this.props.openModal}
@@ -148,9 +196,9 @@ export default class EAOMap extends React.Component {
 
 const ProjectMarkers = ({ projects }) => {
   if (projects) {
-    const items = projects.map((props) => (
-      <ProjectMarker key={props.id} {...props} />
+    const items = projects.map(props => (
+      <ProjectMarker key={props._id} {...props} />
     ));
-    return <div style={{ display: 'none' }}>{items}</div>;
+    return <div style={{ display: "none" }}>{items}</div>;
   }
-}
+};
