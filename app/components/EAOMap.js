@@ -173,9 +173,9 @@ export default class EAOMap extends React.Component {
       <div>
         <Map center={position} zoom={zoom}>
           <TileLayer
-            url="https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}"
+            url="https://api.mapbox.com/styles/v1/mapbox/{id}/tiles/256/{z}/{x}/{y}@2x?access_token={accessToken}"
             accessToken={access_token}
-            id="mapbox.outdoors"
+            id="outdoors-v10"
             attribution="data <a href='https://projects.eao.gov.bc.ca/'>courtesy of the BC government</a>"
             minZoom={5}
           />
